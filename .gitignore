@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+*.log
+venv/
+.idea/
+.vscode/
+*.swp
+odoo-bin
+*.db
