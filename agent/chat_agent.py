@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Agente IA – Versão Final (com todas as funções e extração robusta)
-- Extração com prioridade nas palavras‑chave
-- Funções: listar_projetos, criar_projeto, adicionar_tarefa, listar_tarefas,
-  listar_stages, criar_stage, mover_tarefas, mover_tarefa_unica,
-  eliminar_tarefa, eliminar_stage, eliminar_projeto,
-  analisar_riscos, priorizar_tarefas
-- Conexão Odoo com retry
+Agente IA – Versão Final com Resumo de Projetos
 """
 
 import os
@@ -87,7 +81,7 @@ def _get_task_id_by_name(project_id: int, task_name: str) -> Optional[int]:
     ]])
     return ids[0] if ids else None
 
-# ========== FERRAMENTAS ==========
+# ========== FERRAMENTAS (TODAS) ==========
 
 def listar_projetos(user_id=None, is_manager=False) -> str:
     try:
@@ -196,7 +190,6 @@ def listar_stages(project_name: str, user_id=None, is_manager=False) -> str:
     except Exception as e:
         return f"ERRO: {str(e)}"
 
-# ========== FUNÇÃO CRIAR_STAGE (DEFINIDA) ==========
 def criar_stage(project_name: str, stage_name: str, sequence: int = 10, user_id=None, is_manager=False) -> str:
     if not is_manager:
         return "Permissão negada. Apenas gestores podem criar stages."
@@ -392,20 +385,63 @@ def priorizar_tarefas(project_name: str, user_id=None, is_manager=False) -> str:
     except Exception as e:
         return f"ERRO na priorização: {str(e)}"
 
-# ========== EXTRACTORS ROBUSTOS ==========
+# ========== NOVA FUNÇÃO: RESUMO ==========
+def resumo_projeto(project_name: str, user_id=None, is_manager=False) -> str:
+    """Devolve um resumo detalhado do projeto com estatísticas."""
+    try:
+        if not project_name:
+            return "ERRO: É necessário indicar o nome do projeto."
+        common, uid, models = _get_odoo_connection()
+        proj_id = _get_project_id_by_name(project_name)
+        if not proj_id:
+            return f"ERRO: Projeto '{project_name}' não encontrado."
+        # Obter tarefas
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        if not task_ids:
+            return f"O projeto '{project_name}' não tem tarefas."
+        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read', [task_ids], {'fields': ['name', 'stage_id', 'create_date']})
+        total = len(tasks)
+        # Contar stages
+        stages_count = {}
+        no_stage = 0
+        for t in tasks:
+            if t['stage_id'] is False:
+                no_stage += 1
+            else:
+                stage_name = t['stage_id'][1] if t['stage_id'] else "Sem Stage"
+                stages_count[stage_name] = stages_count.get(stage_name, 0) + 1
+        # Montar resposta
+        resposta = f"📊 RESUMO DO PROJETO: {project_name}\n"
+        resposta += f"• Total de tarefas: {total}\n"
+        resposta += "• Distribuição por stages:\n"
+        for stage, count in stages_count.items():
+            resposta += f"   - {stage}: {count} tarefas\n"
+        if no_stage > 0:
+            resposta += f"   - ⚠️ Sem Stage: {no_stage} tarefas (prioritárias)\n"
+        # Recomendação
+        risco_percent = (no_stage / total) * 100 if total > 0 else 0
+        resposta += "• Recomendação: "
+        if risco_percent > 70:
+            resposta += "Priorize a definição de stages para todas as tarefas."
+        elif risco_percent > 40:
+            resposta += "Considere atribuir stages às tarefas pendentes."
+        else:
+            resposta += "Projeto bem organizado. Continue monitorizando."
+        return resposta
+    except Exception as e:
+        return f"ERRO ao gerar resumo: {str(e)}"
+
+# ========== EXTRACTORS ==========
 
 def _extract_project_from_text(text: str) -> Optional[str]:
     if not text:
         return None
-    # 1. Procura explicitamente "projeto" (ou variants) seguido de nome (com ou sem aspas)
     match = re.search(r'(?:projeto|projecto|project)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
-    # 2. Procura "para o projeto" ou "para projeto"
     match = re.search(r'para\s+o?\s+(?:projeto|projecto|project)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
-    # 3. Fallback: conteúdo entre aspas (se não houver palavra-chave)
     match = re.search(r'["\']([^"\']+)["\']', text)
     if match:
         return match.group(1).strip()
@@ -449,7 +485,7 @@ def _extract_sequence_from_text(text: str) -> int:
     match = re.search(r'sequ[eê]ncia\s+(\d+)', text, re.IGNORECASE)
     return int(match.group(1)) if match else 10
 
-# ========== FALLBACK DIRETO ==========
+# ========== FALLBACK DIRETO (com suporte a resumo) ==========
 
 def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optional[str]:
     if not user_message:
@@ -496,23 +532,6 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
         proj = _extract_project_from_text(msg)
         stage = _extract_stage_from_text(msg)
         if not proj or not stage:
-            # Tenta extrair mesmo sem palavras-chave (fallback)
-            parts = re.split(r'\s+', msg)
-            # procura por "stage" e "projeto" na ordem
-            stage_idx = None
-            proj_idx = None
-            for i, word in enumerate(parts):
-                if word.lower() in ['stage', 'etapa'] and i+1 < len(parts):
-                    stage_idx = i+1
-                if word.lower() in ['projeto', 'projecto', 'project'] and i+1 < len(parts):
-                    proj_idx = i+1
-            if stage_idx is not None and proj_idx is not None:
-                # Tenta obter os nomes (removendo aspas)
-                stage_candidate = parts[stage_idx].strip('"\'')
-                proj_candidate = parts[proj_idx].strip('"\'')
-                # Se os candidatos existirem, usa-os
-                if stage_candidate and proj_candidate:
-                    return criar_stage(proj_candidate, stage_candidate, _extract_sequence_from_text(msg), user_id, is_manager)
             return "Exemplo: 'Cria o stage \"REVIEW\" com sequência 15 para o projeto \"Vendas\"'"
         seq = _extract_sequence_from_text(msg)
         return criar_stage(proj, stage, seq, user_id, is_manager)
@@ -579,6 +598,13 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Prioriza as tarefas do projeto \"Vendas\"'"
         return priorizar_tarefas(proj, user_id, is_manager)
 
+    # ========== NOVO: RESUMO ==========
+    if re.search(r'(resumo|sumário|dá-me um resumo|mostra o resumo)', msg_lower):
+        proj = _extract_project_from_text(msg)
+        if not proj:
+            return "Exemplo: 'Dá-me um resumo do projeto \"Vendas\"'"
+        return resumo_projeto(proj, user_id, is_manager)
+
     return None
 
 # ========== GROQ E EXECUÇÃO ==========
@@ -590,13 +616,13 @@ def _classify_with_groq(user_message: str) -> Optional[Dict[str, Any]]:
         client = Groq(api_key=GROQ_API_KEY)
         prompt = f"""
 You are an assistant for Odoo projects. Classify the user request and respond in JSON format with:
-- "action": one of ["listar_projetos", "criar_projeto", "adicionar_tarefa", "listar_tarefas", "listar_stages", "criar_stage", "mover_tarefas", "mover_tarefa_unica", "eliminar_tarefa", "eliminar_stage", "eliminar_projeto", "analisar_riscos", "priorizar_tarefas"]
+- "action": one of ["listar_projetos", "criar_projeto", "adicionar_tarefa", "listar_tarefas", "listar_stages", "criar_stage", "mover_tarefas", "mover_tarefa_unica", "eliminar_tarefa", "eliminar_stage", "eliminar_projeto", "analisar_riscos", "priorizar_tarefas", "resumo_projeto"]
 - "params": a dictionary with the required parameters.
 
 Examples:
 - "Cria o projeto Teste com tarefas A,B" -> {{"action": "criar_projeto", "params": {{"name": "Teste", "tasks": "A, B"}}}}
 - "Adiciona a tarefa X ao projeto Y" -> {{"action": "adicionar_tarefa", "params": {{"project_name": "Y", "task_name": "X"}}}}
-- "Cria o stage REVIEW com sequência 15 para o projeto Vendas" -> {{"action": "criar_stage", "params": {{"project_name": "Vendas", "stage_name": "REVIEW", "sequence": 15}}}}
+- "Dá-me um resumo do projeto Vendas" -> {{"action": "resumo_projeto", "params": {{"project_name": "Vendas"}}}}
 
 User request: {user_message}
 """
@@ -631,6 +657,7 @@ def _execute_action(action: str, params: Dict[str, Any], user_id: Optional[int],
         "eliminar_projeto": lambda: eliminar_projeto(params.get("project_name", ""), user_id, is_manager),
         "analisar_riscos": lambda: analisar_riscos(params.get("project_name", ""), user_id, is_manager),
         "priorizar_tarefas": lambda: priorizar_tarefas(params.get("project_name", ""), user_id, is_manager),
+        "resumo_projeto": lambda: resumo_projeto(params.get("project_name", ""), user_id, is_manager),
     }
     func = action_map.get(action)
     if func:
