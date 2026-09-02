@@ -298,21 +298,22 @@ class ChatbotController(http.Controller):
                         <span class="arrow">▸</span>
                     </summary>
                     <div class="help-content">
-                        <span class="cmd"><i class="fas fa-list"></i> <span class="highlight">Lista os projetos existentes</span></span>
-                        <span class="cmd"><i class="fas fa-plus-circle"></i> <span class="highlight">Cria o projeto "Nome"</span> com tarefas A, B</span>
-                        <span class="cmd"><i class="fas fa-tasks"></i> <span class="highlight">Lista as tarefas</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-layer-group"></i> <span class="highlight">Lista os stages</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-edit"></i> <span class="highlight">Cria o stage "REVIEW"</span> com sequência 15 para o projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-arrow-right"></i> <span class="highlight">Move todas as tarefas</span> do projeto "Nome" para o stage "REVIEW"</span>
-                        <span class="cmd"><i class="fas fa-arrow-right"></i> <span class="highlight">Move a tarefa "A"</span> do projeto "Nome" para o stage "REVIEW"</span>
-                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">Elimina a tarefa "A"</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">Elimina o stage "REVIEW"</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">Elimina o projeto "Nome"</span></span>
-                        <span class="cmd"><i class="fas fa-chart-line"></i> <span class="highlight">Analisa os riscos</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-sort-amount-up"></i> <span class="highlight">Prioriza as tarefas</span> do projeto "Nome"</span>
-                        <span class="cmd"><i class="fas fa-info-circle"></i> <span class="highlight">Dá-me um resumo</span> do projeto "Nome"</span>
-                        <div class="desc"><i class="fas fa-info-circle" style="color:#714B67;"></i> Podes escrever em linguagem natural. O agente entende variações como "mostra", "exibe", "ver", "cria", "move", "analisa", "transfere", "apaga", etc.</div>
-                    </div>
+                        <span class="cmd"><i class="fas fa-list"></i> <span class="highlight">1. Lista os projetos existentes</span></span>
+                        <span class="cmd"><i class="fas fa-plus-circle"></i> <span class="highlight">2. Cria o projeto "Nome"</span> com tarefas A, B</span>
+                        <span class="cmd"><i class="fas fa-tasks"></i> <span class="highlight">3. Adiciona a tarefa "D"</span> ao projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-tasks"></i> <span class="highlight">4. Lista as tarefas</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-layer-group"></i> <span class="highlight">5. Lista os stages</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-edit"></i> <span class="highlight">6. Cria o stage "REVIEW"</span> com sequência 15 para o projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-arrow-right"></i> <span class="highlight">7. Move todas as tarefas</span> do projeto "Nome" para o stage "REVIEW"</span>
+                        <span class="cmd"><i class="fas fa-arrow-right"></i> <span class="highlight">8. Move a tarefa "A"</span> do projeto "Nome" para o stage "FASE_2"</span>
+                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">9. Elimina a tarefa "B"</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">10. Elimina o stage "REVIEW"</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-trash-alt"></i> <span class="highlight">11. Elimina o projeto "Nome"</span></span>
+                        <span class="cmd"><i class="fas fa-chart-line"></i> <span class="highlight">12. Analisa os riscos</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-sort-amount-up"></i> <span class="highlight">13. Prioriza as tarefas</span> do projeto "Nome"</span>
+                        <span class="cmd"><i class="fas fa-info-circle"></i> <span class="highlight">14. Dá-me um resumo</span> do projeto "Nome"</span>
+                   <div class="desc"><i class="fas fa-info-circle" style="color:#714B67;"></i> Podes escrever em linguagem natural. O agente entende variações como "mostra", "exibe", "ver", "cria", "move", "analisa", "transfere", "apaga", etc.</div>
+                 </div> 
                 </details>
 
                 <div id="chatMessages" class="chat-messages">
@@ -400,6 +401,8 @@ class ChatbotController(http.Controller):
             pergunta = data.get('mensagem', '').strip()
             if not pergunta:
                 return Response(json.dumps({'erro': 'Mensagem vazia'}), status=400)
+
+            _logger.info(f"📩 Mensagem recebida: {pergunta}")
 
             user = request.env.user
             user_id = user.id
@@ -561,7 +564,6 @@ class ChatbotController(http.Controller):
         if stats is None:
             return "<h1>Projeto não encontrado</h1><a href='/assistente/dashboard'>Voltar</a>"
         import json
-        # Usar o nome guardado no dicionário (já pré‑carregado)
         project_name = stats.get('project_name', 'Projeto')
         tasks = stats.get('task_list', [])
         task_rows = ''.join([f'<tr><td>{t["name"]}</td><td>{t["stage"]}</td><td>{t["assignee"]}</td><td>{t["create_date"]}</td></tr>' for t in tasks])

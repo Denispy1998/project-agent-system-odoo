@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Agente IA – Versão Final com Resumo de Projetos
+Agente IA – Versão Final (Corrigida)
+- Criação automática de stages ao mover tarefa única
+- Domínios corrigidos para Odoo 19
+- Logs detalhados
 """
 
 import os
 import re
 import json
-import xmlrpc.client
 import time
 import logging
+import xmlrpc.client
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.info("🚀 AGENTE CARREGADO: versão final com correções")
 
-load_dotenv()
-
-# ========== GROQ API ==========
+# ========================== GROQ API ==========================
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -30,7 +33,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY não definida no ficheiro .env")
 
-# ========== CONFIGURAÇÕES ==========
+# ========================== CONFIGURAÇÕES ==========================
 ODOO_URL = os.getenv("ODOO_URL", "http://localhost:8069")
 ODOO_DB = os.getenv("ODOO_DB", "odoo")
 ODOO_USER = os.getenv("ODOO_USER", "admin")
@@ -40,7 +43,7 @@ TEMPERATURE = 0.0
 TIMEOUT = 30
 MAX_RETRIES = 3
 
-# ========== CONEXÃO ODOO ==========
+# ========================== CONEXÃO ODOO ==========================
 _odoo_connection = None
 
 def _get_odoo_connection():
@@ -64,7 +67,7 @@ def _get_odoo_connection():
                 continue
             raise ConnectionError(f"Erro ao conectar ao Odoo após {MAX_RETRIES} tentativas: {e}")
 
-# ========== AUXILIARES ==========
+# ========================== FUNÇÕES AUXILIARES ==========================
 def _get_project_id_by_name(name: str) -> Optional[int]:
     if not name:
         return None
@@ -75,13 +78,39 @@ def _get_project_id_by_name(name: str) -> Optional[int]:
 
 def _get_task_id_by_name(project_id: int, task_name: str) -> Optional[int]:
     common, uid, models = _get_odoo_connection()
-    ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[
-        ('project_id', '=', project_id),
-        ('name', '=', task_name)
-    ]])
+    ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [
+        [('project_id', '=', project_id), ('name', '=', task_name)]
+    ])
     return ids[0] if ids else None
 
-# ========== FERRAMENTAS (TODAS) ==========
+# ========================== FUNÇÃO CORRIGIDA: _get_stage_id ==========================
+def _get_stage_id(project_id: int, stage_name: str, create_if_missing: bool = False) -> Optional[int]:
+    """
+    Obtém o ID de um stage pelo nome no projeto.
+    Se `create_if_missing` for True e o stage não existir, cria-o com sequência 10.
+    """
+    common, uid, models = _get_odoo_connection()
+    # Domínio CORRETO: lista de triplas, com o valor do project_id como lista
+    domain = [('name', '=', stage_name), ('project_ids', 'in', [project_id])]
+    stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [domain])
+    if stage_ids:
+        return stage_ids[0]
+    if create_if_missing:
+        logger.info(f"🔨 Stage '{stage_name}' não encontrado. A criar automaticamente...")
+        try:
+            new_id = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'create', [{
+                'name': stage_name,
+                'sequence': 10,
+                'project_ids': [(4, project_id, 0)]   # Ligação ao projeto
+            }])
+            logger.info(f"✅ Stage '{stage_name}' criado com ID {new_id}")
+            return new_id
+        except Exception as e:
+            logger.error(f"Erro ao criar stage '{stage_name}': {e}")
+            return None
+    return None
+
+# ========================== FERRAMENTAS DO AGENTE ==========================
 
 def listar_projetos(user_id=None, is_manager=False) -> str:
     try:
@@ -89,7 +118,8 @@ def listar_projetos(user_id=None, is_manager=False) -> str:
         ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.project', 'search', [[]])
         if not ids:
             return "Nenhum projeto encontrado."
-        projetos = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.project', 'read', [ids], {'fields': ['name', 'task_ids']})
+        projetos = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.project', 'read',
+                                      [ids], {'fields': ['name', 'task_ids']})
         resposta = ["Projetos existentes:"]
         for p in projetos:
             resposta.append(f"  • {p['name']} (ID: {p['id']}) – {len(p['task_ids'])} tarefas")
@@ -112,20 +142,21 @@ def criar_projeto(name: str, tasks: str = "", user_id=None, is_manager=False) ->
             'name': name,
             'description': ''
         }])
+        logger.info(f"Projeto '{name}' criado com ID {proj_id}")
         task_list = [t.strip() for t in tasks.split(',') if t.strip()]
-        created_count = 0
-        for task_name in task_list:
+        created = 0
+        for tname in task_list:
             try:
                 models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'create', [{
-                    'name': task_name,
+                    'name': tname,
                     'project_id': proj_id,
                     'stage_id': False,
-                    'description': f"Tarefa: {task_name}"
+                    'description': f"Tarefa: {tname}"
                 }])
-                created_count += 1
+                created += 1
             except Exception as e:
-                logger.error(f"Erro ao criar tarefa '{task_name}': {e}")
-        return f"SUCESSO: Projeto '{name}' (ID {proj_id}) criado com {created_count} tarefas."
+                logger.error(f"Erro ao criar tarefa '{tname}': {e}")
+        return f"SUCESSO: Projeto '{name}' (ID {proj_id}) criado com {created} tarefas."
     except Exception as e:
         logger.error(f"ERRO crítico em criar_projeto: {e}")
         return f"ERRO crítico: {str(e)}"
@@ -159,10 +190,12 @@ def listar_tarefas(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"Projeto '{project_name}' não tem tarefas."
-        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read', [task_ids], {'fields': ['name', 'stage_id']})
+        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read',
+                                   [task_ids], {'fields': ['name', 'stage_id']})
         resposta = [f"Tarefas de '{project_name}':"]
         for t in tasks:
             stage = "Sem Stage" if t['stage_id'] is False else (t['stage_id'][1] if t['stage_id'] else "Sem Stage")
@@ -179,10 +212,12 @@ def listar_stages(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [[('project_ids', 'in', [proj_id])]])
+        stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search',
+                                      [[('project_ids', 'in', [proj_id])]])
         if not stage_ids:
             return f"Projeto '{project_name}' não tem stages configurados."
-        stages = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'read', [stage_ids], {'fields': ['name', 'sequence']})
+        stages = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'read',
+                                    [stage_ids], {'fields': ['name', 'sequence']})
         resposta = [f"Stages do projeto '{project_name}':"]
         for s in sorted(stages, key=lambda x: x.get('sequence', 0)):
             resposta.append(f"  • {s['name']} (Seq: {s.get('sequence', 0)})")
@@ -200,11 +235,7 @@ def criar_stage(project_name: str, stage_name: str, sequence: int = 10, user_id=
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        exist = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [[
-            ('name', '=', stage_name),
-            ('project_ids', 'in', [proj_id])
-        ]])
-        if exist:
+        if _get_stage_id(proj_id, stage_name, create_if_missing=False):
             return f"ERRO: Stage '{stage_name}' já existe neste projeto."
         models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'create', [{
             'name': stage_name,
@@ -225,14 +256,11 @@ def mover_tarefas(project_name: str, stage_name: str, user_id=None, is_manager=F
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [[
-            ('name', '=', stage_name),
-            ('project_ids', 'in', [proj_id])
-        ]])
-        if not stage_ids:
+        stage_id = _get_stage_id(proj_id, stage_name, create_if_missing=False)
+        if not stage_id:
             return f"ERRO: Stage '{stage_name}' não encontrado no projeto '{project_name}'."
-        stage_id = stage_ids[0]
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"Projeto '{project_name}' não tem tarefas."
         models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'write', [task_ids, {'stage_id': stage_id}])
@@ -240,6 +268,7 @@ def mover_tarefas(project_name: str, stage_name: str, user_id=None, is_manager=F
     except Exception as e:
         return f"ERRO: {str(e)}"
 
+# ========================== FUNÇÃO CORRIGIDA: mover_tarefa_unica ==========================
 def mover_tarefa_unica(project_name: str, task_name: str, stage_name: str, user_id=None, is_manager=False) -> str:
     if not is_manager:
         return "Permissão negada. Apenas gestores podem mover tarefas."
@@ -253,16 +282,20 @@ def mover_tarefa_unica(project_name: str, task_name: str, stage_name: str, user_
         task_id = _get_task_id_by_name(proj_id, task_name)
         if not task_id:
             return f"ERRO: Tarefa '{task_name}' não encontrada no projeto '{project_name}'."
-        stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [[
-            ('name', '=', stage_name),
-            ('project_ids', 'in', [proj_id])
-        ]])
-        if not stage_ids:
-            return f"ERRO: Stage '{stage_name}' não encontrado no projeto '{project_name}'."
-        stage_id = stage_ids[0]
+
+        # Obtém o stage (cria se não existir)
+        stage_id = _get_stage_id(proj_id, stage_name, create_if_missing=True)
+        if not stage_id:
+            return f"ERRO: Não foi possível criar/obter o stage '{stage_name}'."
+
         models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'write', [[task_id], {'stage_id': stage_id}])
         return f"SUCESSO: Tarefa '{task_name}' movida para '{stage_name}'."
+
+    except xmlrpc.client.Fault as fault:
+        logger.error(f"Erro XML-RPC em mover_tarefa_unica: {fault}")
+        return f"ERRO (XML-RPC): {fault.faultString}"
     except Exception as e:
+        logger.error(f"Erro em mover_tarefa_unica: {e}", exc_info=True)
         return f"ERRO: {str(e)}"
 
 def eliminar_tarefa(project_name: str, task_name: str, user_id=None, is_manager=False) -> str:
@@ -293,17 +326,14 @@ def eliminar_stage(project_name: str, stage_name: str, user_id=None, is_manager=
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        stage_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'search', [[
-            ('name', '=', stage_name),
-            ('project_ids', 'in', [proj_id])
-        ]])
-        if not stage_ids:
+        stage_id = _get_stage_id(proj_id, stage_name, create_if_missing=False)
+        if not stage_id:
             return f"ERRO: Stage '{stage_name}' não encontrado no projeto '{project_name}'."
-        stage_id = stage_ids[0]
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('stage_id', '=', stage_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('stage_id', '=', stage_id)]])
         if task_ids:
             return f"ERRO: Stage tem {len(task_ids)} tarefas. Movas ou elimine-as primeiro."
-        models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'unlink', [stage_ids])
+        models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task.type', 'unlink', [stage_id])
         return f"SUCESSO: Stage '{stage_name}' eliminado."
     except Exception as e:
         return f"ERRO: {str(e)}"
@@ -318,7 +348,8 @@ def eliminar_projeto(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if task_ids:
             models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'unlink', [task_ids])
         models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.project', 'unlink', [proj_id])
@@ -334,23 +365,23 @@ def analisar_riscos(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"Projeto '{project_name}' não tem tarefas para análise."
-        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read', [task_ids], {'fields': ['name', 'stage_id']})
+        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read',
+                                   [task_ids], {'fields': ['name', 'stage_id']})
         total = len(tasks)
-        risk_tasks = [t for t in tasks if t['stage_id'] is False]
-        risk_count = len(risk_tasks)
-        risk_percent = (risk_count / total) * 100 if total > 0 else 0
-        atraso_prob = min(risk_percent, 100)
+        no_stage = sum(1 for t in tasks if t['stage_id'] is False)
+        risco = (no_stage / total * 100) if total > 0 else 0
         resposta = f"Análise de riscos para o projeto '{project_name}':\n"
         resposta += f"  • Total de tarefas: {total}\n"
-        resposta += f"  • Tarefas sem stage definido: {risk_count}\n"
-        resposta += f"  • Probabilidade estimada de atraso: {atraso_prob:.1f}%\n"
+        resposta += f"  • Tarefas sem stage definido: {no_stage}\n"
+        resposta += f"  • Probabilidade estimada de atraso: {min(risco, 100):.1f}%\n"
         resposta += "  • Recomendação: "
-        if atraso_prob > 70:
+        if risco > 70:
             resposta += "Priorize a definição de stages para todas as tarefas."
-        elif atraso_prob > 40:
+        elif risco > 40:
             resposta += "Considere rever o planeamento e atribuir stages às tarefas pendentes."
         else:
             resposta += "O projeto parece estar bem organizado. Continue monitorizando."
@@ -366,14 +397,13 @@ def priorizar_tarefas(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"Projeto '{project_name}' não tem tarefas."
-        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read', [task_ids], {'fields': ['name', 'stage_id']})
-        def prioridade(t):
-            no_stage = (t['stage_id'] is False)
-            return (0 if no_stage else 1, t['name'])
-        sorted_tasks = sorted(tasks, key=prioridade)
+        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read',
+                                   [task_ids], {'fields': ['name', 'stage_id']})
+        sorted_tasks = sorted(tasks, key=lambda t: (0 if t['stage_id'] is False else 1, t['name']))
         resposta = f"Tarefas do projeto '{project_name}' por ordem de prioridade (mais prioritárias primeiro):\n"
         for idx, t in enumerate(sorted_tasks, 1):
             stage = "Sem Stage" if t['stage_id'] is False else (t['stage_id'][1] if t['stage_id'] else "Sem Stage")
@@ -385,9 +415,7 @@ def priorizar_tarefas(project_name: str, user_id=None, is_manager=False) -> str:
     except Exception as e:
         return f"ERRO na priorização: {str(e)}"
 
-# ========== NOVA FUNÇÃO: RESUMO ==========
 def resumo_projeto(project_name: str, user_id=None, is_manager=False) -> str:
-    """Devolve um resumo detalhado do projeto com estatísticas."""
     try:
         if not project_name:
             return "ERRO: É necessário indicar o nome do projeto."
@@ -395,35 +423,33 @@ def resumo_projeto(project_name: str, user_id=None, is_manager=False) -> str:
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        # Obter tarefas
-        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search', [[('project_id', '=', proj_id)]])
+        task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
+                                      [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"O projeto '{project_name}' não tem tarefas."
-        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read', [task_ids], {'fields': ['name', 'stage_id', 'create_date']})
+        tasks = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'read',
+                                   [task_ids], {'fields': ['name', 'stage_id']})
         total = len(tasks)
-        # Contar stages
-        stages_count = {}
         no_stage = 0
+        stages = {}
         for t in tasks:
             if t['stage_id'] is False:
                 no_stage += 1
             else:
-                stage_name = t['stage_id'][1] if t['stage_id'] else "Sem Stage"
-                stages_count[stage_name] = stages_count.get(stage_name, 0) + 1
-        # Montar resposta
+                sname = t['stage_id'][1] if t['stage_id'] else "Sem Stage"
+                stages[sname] = stages.get(sname, 0) + 1
         resposta = f"📊 RESUMO DO PROJETO: {project_name}\n"
         resposta += f"• Total de tarefas: {total}\n"
         resposta += "• Distribuição por stages:\n"
-        for stage, count in stages_count.items():
+        for stage, count in stages.items():
             resposta += f"   - {stage}: {count} tarefas\n"
         if no_stage > 0:
             resposta += f"   - ⚠️ Sem Stage: {no_stage} tarefas (prioritárias)\n"
-        # Recomendação
-        risco_percent = (no_stage / total) * 100 if total > 0 else 0
+        risco = (no_stage / total * 100) if total > 0 else 0
         resposta += "• Recomendação: "
-        if risco_percent > 70:
+        if risco > 70:
             resposta += "Priorize a definição de stages para todas as tarefas."
-        elif risco_percent > 40:
+        elif risco > 40:
             resposta += "Considere atribuir stages às tarefas pendentes."
         else:
             resposta += "Projeto bem organizado. Continue monitorizando."
@@ -431,26 +457,11 @@ def resumo_projeto(project_name: str, user_id=None, is_manager=False) -> str:
     except Exception as e:
         return f"ERRO ao gerar resumo: {str(e)}"
 
-# ========== EXTRACTORS ==========
-
+# ========================== EXTRACTORS ==========================
 def _extract_project_from_text(text: str) -> Optional[str]:
     if not text:
         return None
     match = re.search(r'(?:projeto|projecto|project)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    match = re.search(r'para\s+o?\s+(?:projeto|projecto|project)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    match = re.search(r'["\']([^"\']+)["\']', text)
-    if match:
-        return match.group(1).strip()
-    return None
-
-def _extract_task_from_text(text: str) -> Optional[str]:
-    if not text:
-        return None
-    match = re.search(r'(?:tarefa|task)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     match = re.search(r'["\']([^"\']+)["\']', text)
@@ -469,6 +480,17 @@ def _extract_stage_from_text(text: str) -> Optional[str]:
         return match.group(1).strip()
     return None
 
+def _extract_task_from_text(text: str) -> Optional[str]:
+    if not text:
+        return None
+    match = re.search(r'(?:tarefa|task)\s+(?:["\']?)([^"\',;]+)(?:["\']?)', text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    match = re.search(r'["\']([^"\']+)["\']', text)
+    if match:
+        return match.group(1).strip()
+    return None
+
 def _extract_tasks_from_text(text: str) -> str:
     if not text:
         return ""
@@ -477,27 +499,22 @@ def _extract_tasks_from_text(text: str) -> str:
         match = re.search(r'(?:tarefas|tasks)\s+["\']?(.+?)["\']?$', text, re.IGNORECASE)
     if not match:
         match = re.search(r'(?:tarefas|tasks)\s+(.+)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return ""
+    return match.group(1).strip() if match else ""
 
 def _extract_sequence_from_text(text: str) -> int:
     match = re.search(r'sequ[eê]ncia\s+(\d+)', text, re.IGNORECASE)
     return int(match.group(1)) if match else 10
 
-# ========== FALLBACK DIRETO (com suporte a resumo) ==========
-
+# ========================== FALLBACK DIRETO ==========================
 def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optional[str]:
     if not user_message:
         return None
     msg = user_message.strip()
     msg_lower = msg.lower()
 
-    # Listar projetos
     if re.search(r'(lista|listar|mostra|exibe|ver)\s+(os\s+)?(projetos|projectos)', msg_lower):
         return listar_projetos(user_id, is_manager)
 
-    # Criar projeto
     if re.search(r'(cria|criar)\s+(um\s+)?(o\s+)?(projeto|projecto)', msg_lower):
         nome = _extract_project_from_text(msg)
         if not nome:
@@ -505,7 +522,6 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
         tarefas = _extract_tasks_from_text(msg)
         return criar_projeto(nome, tarefas, user_id, is_manager)
 
-    # Adicionar tarefa
     if re.search(r'(adiciona|adicionar|acrescenta|acrescentar)\s+(a\s+)?(tarefa|task)', msg_lower):
         proj = _extract_project_from_text(msg)
         task = _extract_task_from_text(msg)
@@ -513,30 +529,34 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Adiciona a tarefa \"T4\" ao projeto \"Vendas\"'"
         return adicionar_tarefa(proj, task, user_id, is_manager)
 
-    # Listar tarefas
     if re.search(r'(lista|listar|mostra|exibe|ver)\s+(as\s+)?(tarefas|tasks)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
             return "Exemplo: 'Lista as tarefas do projeto \"Vendas\"'"
         return listar_tarefas(proj, user_id, is_manager)
 
-    # Listar stages
     if re.search(r'(lista|listar|mostra|exibe|ver)\s+(os\s+)?(stages|etapas)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
             return "Exemplo: 'Lista os stages do projeto \"Vendas\"'"
         return listar_stages(proj, user_id, is_manager)
 
-    # Criar stage
-    if re.search(r'(cria|criar)\s+(um\s+)?(stage|etapa)', msg_lower):
+    if re.search(r'(cria|criar)\s+(um\s+)?(o\s+)?(stage|etapa)', msg_lower):
+        logger.info(f"🔍 FALLBACK: detectado comando 'cria o stage'")
         proj = _extract_project_from_text(msg)
         stage = _extract_stage_from_text(msg)
+        if not proj or not stage:
+            parts = re.split(r'\s+', msg)
+            for i, w in enumerate(parts):
+                if w.lower() in ['stage', 'etapa'] and i+1 < len(parts):
+                    stage = parts[i+1].strip('"\'')
+                if w.lower() in ['projeto', 'projecto', 'project'] and i+1 < len(parts):
+                    proj = parts[i+1].strip('"\'')
         if not proj or not stage:
             return "Exemplo: 'Cria o stage \"REVIEW\" com sequência 15 para o projeto \"Vendas\"'"
         seq = _extract_sequence_from_text(msg)
         return criar_stage(proj, stage, seq, user_id, is_manager)
 
-    # Mover todas as tarefas
     if re.search(r'(move|mover|transfere|transferir)\s+(todas\s+)?(as\s+)?(tarefas|tasks)', msg_lower) and ("todas" in msg_lower or "tarefas" in msg_lower):
         proj = _extract_project_from_text(msg)
         stage = _extract_stage_from_text(msg)
@@ -548,8 +568,8 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Move todas as tarefas do projeto \"Vendas\" para o stage \"REVIEW\"'"
         return mover_tarefas(proj, stage, user_id, is_manager)
 
-    # Mover uma tarefa
-    if re.search(r'(move|mover|transfere|transferir)\s+(a\s+)?(tarefa|task)', msg_lower) and not "todas" in msg_lower:
+    # ========== MOVER UMA TAREFA (COM CRIAÇÃO AUTOMÁTICA) ==========
+    if re.search(r'(move|mover|transfere|transferir)\s+(a\s+)?(tarefa|task)', msg_lower) and "todas" not in msg_lower:
         proj = _extract_project_from_text(msg)
         task = _extract_task_from_text(msg)
         stage = _extract_stage_from_text(msg)
@@ -561,7 +581,6 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Move a tarefa \"A\" do projeto \"Vendas\" para o stage \"REVIEW\"'"
         return mover_tarefa_unica(proj, task, stage, user_id, is_manager)
 
-    # Eliminar tarefa
     if re.search(r'(elimina|eliminar|apaga|apagar)\s+(a\s+)?(tarefa|task)', msg_lower):
         proj = _extract_project_from_text(msg)
         task = _extract_task_from_text(msg)
@@ -569,7 +588,6 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Elimina a tarefa \"T1\" do projeto \"Vendas\"'"
         return eliminar_tarefa(proj, task, user_id, is_manager)
 
-    # Eliminar stage
     if re.search(r'(elimina|eliminar|apaga|apagar)\s+(o\s+)?(stage|etapa)', msg_lower):
         proj = _extract_project_from_text(msg)
         stage = _extract_stage_from_text(msg)
@@ -577,28 +595,24 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
             return "Exemplo: 'Elimina o stage \"REVIEW\" do projeto \"Vendas\"'"
         return eliminar_stage(proj, stage, user_id, is_manager)
 
-    # Eliminar projeto
     if re.search(r'(elimina|eliminar|apaga|apagar)\s+(o\s+)?(projeto|projecto)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
             return "Exemplo: 'Elimina o projeto \"Vendas\"'"
         return eliminar_projeto(proj, user_id, is_manager)
 
-    # Analisar riscos
     if re.search(r'(analisa|analisar|analiza|analizar)\s+(os\s+)?(riscos|risks)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
             return "Exemplo: 'Analisa os riscos do projeto \"Vendas\"'"
         return analisar_riscos(proj, user_id, is_manager)
 
-    # Priorizar tarefas
     if re.search(r'(prioriza|priorizar)\s+(as\s+)?(tarefas|tasks)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
             return "Exemplo: 'Prioriza as tarefas do projeto \"Vendas\"'"
         return priorizar_tarefas(proj, user_id, is_manager)
 
-    # ========== NOVO: RESUMO ==========
     if re.search(r'(resumo|sumário|dá-me um resumo|mostra o resumo)', msg_lower):
         proj = _extract_project_from_text(msg)
         if not proj:
@@ -607,8 +621,7 @@ def _fallback_direct(user_message: str, user_id=None, is_manager=False) -> Optio
 
     return None
 
-# ========== GROQ E EXECUÇÃO ==========
-
+# ========================== LLM FALLBACK ==========================
 def _classify_with_groq(user_message: str) -> Optional[Dict[str, Any]]:
     if not GROQ_AVAILABLE:
         return None
@@ -669,20 +682,22 @@ def _execute_action(action: str, params: Dict[str, Any], user_id: Optional[int],
     return f"Ação '{action}' não reconhecida."
 
 def run_agent(user_message: str, user_id: Optional[int] = None, is_manager: bool = False) -> str:
+    logger.info(f"🔄 run_agent chamado com: {user_message[:80]}...")
     if not user_message or len(user_message.strip()) < 2:
         return "Por favor, escreve uma mensagem mais detalhada."
 
-    direct_result = _fallback_direct(user_message, user_id, is_manager)
-    if direct_result is not None:
-        return direct_result
+    direct = _fallback_direct(user_message, user_id, is_manager)
+    if direct is not None:
+        logger.info(f"✅ Fallback direto usado: {direct[:50]}...")
+        return direct
 
+    logger.info("⚠️ Fallback direto falhou, usando LLM...")
     if GROQ_AVAILABLE:
         classification = _classify_with_groq(user_message)
         if classification:
             return _execute_action(classification["action"], classification["params"], user_id, is_manager)
         else:
             return "Não entendi o pedido. Tenta reformular com uma das opções sugeridas."
-
     return "Não entendi o comando. Use: Listar projetos, Criar projeto \"Nome\" com tarefas..., etc."
 
 if __name__ == "__main__":
