@@ -3,8 +3,14 @@ from odoo import http
 from datetime import datetime, timedelta
 
 def _valid_count(domain):
+    """Conta tarefas válidas (nome preenchido e com projeto)."""
     Task = http.request.env['project.task']
-    return Task.search_count(domain + [('name', '!=', False), ('name', '!=', '')])
+    full_domain = domain + [
+        ('name', '!=', False),
+        ('name', '!=', ''),
+        ('project_id', '!=', False),
+    ]
+    return Task.search_count(full_domain)
 
 def get_project_stats(project_id=None, user_id=None):
     Project = http.request.env['project.project']
@@ -16,22 +22,30 @@ def get_project_stats(project_id=None, user_id=None):
         project = Project.browse(project_id)
         if not project.exists():
             return None
-
-        # Pré‑carregar os dados do projeto para evitar cursor fechado
-        project_data = project.read(['name', 'description'])[0] if project.exists() else None
+        project_data = project.read(['name', 'description'])[0]
         if not project_data:
             return None
 
-        tasks = Task.search([('project_id', '=', project_id), ('name', '!=', False), ('name', '!=', '')])
+        tasks = Task.search([
+            ('project_id', '=', project_id),
+            ('name', '!=', False),
+            ('name', '!=', ''),
+        ])
         total_tarefas = len(tasks)
 
-        no_stage_count = _valid_count([('project_id', '=', project_id), ('stage_id', '=', False)])
+        no_stage_count = _valid_count([
+            ('project_id', '=', project_id),
+            ('stage_id', '=', False),
+        ])
 
         stats_stages = []
         for stage in Stage.search([]):
             if stage.name and stage.name.upper() == 'NO_STAGE':
                 continue
-            count = _valid_count([('project_id', '=', project_id), ('stage_id', '=', stage.id)])
+            count = _valid_count([
+                ('project_id', '=', project_id),
+                ('stage_id', '=', stage.id),
+            ])
             if count > 0:
                 stats_stages.append({'nome': stage.name, 'count': count})
 
@@ -40,7 +54,10 @@ def get_project_stats(project_id=None, user_id=None):
 
         user_stats = []
         for user in User.search([]):
-            count = _valid_count([('project_id', '=', project_id), ('create_uid', '=', user.id)])
+            count = _valid_count([
+                ('project_id', '=', project_id),
+                ('create_uid', '=', user.id),
+            ])
             if count > 0:
                 user_stats.append({'nome': user.name, 'count': count})
 
@@ -66,7 +83,7 @@ def get_project_stats(project_id=None, user_id=None):
             count = _valid_count([
                 ('project_id', '=', project_id),
                 ('create_date', '>=', d.strftime('%Y-%m-%d %H:%M:%S')),
-                ('create_date', '<', (d + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'))
+                ('create_date', '<', (d + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')),
             ])
             dates.append(d.strftime('%d/%m'))
             counts.append(count)
@@ -85,30 +102,61 @@ def get_project_stats(project_id=None, user_id=None):
         }
 
     else:
-        # Dashboard geral
+        # ============ DASHBOARD GERAL ============
+        # Conta apenas PROJECTOS reais
         projetos = Project.search([])
         total_projetos = len(projetos)
-        total_tarefas = _valid_count([])
 
+        # Conta apenas TAREFAS COM PROJETO (ignora to-dos pessoais)
+        total_tarefas = Task.search_count([
+            ('name', '!=', False),
+            ('name', '!=', ''),
+            ('project_id', '!=', False),
+        ])
+
+        # Stages: apenas os que têm pelo menos 1 tarefa COM PROJETO
         stats_stages = []
         for stage in Stage.search([]):
             if stage.name and stage.name.upper() == 'NO_STAGE':
                 continue
-            count = _valid_count([('stage_id', '=', stage.id)])
+            count = Task.search_count([
+                ('stage_id', '=', stage.id),
+                ('name', '!=', False),
+                ('name', '!=', ''),
+                ('project_id', '!=', False),
+            ])
             if count > 0:
                 stats_stages.append({'nome': stage.name, 'count': count})
 
-        no_stage_count = _valid_count([('stage_id', '=', False)])
+        # "Sem Stage" conta tarefas válidas sem stage
+        no_stage_count = Task.search_count([
+            ('stage_id', '=', False),
+            ('name', '!=', False),
+            ('name', '!=', ''),
+            ('project_id', '!=', False),
+        ])
         if no_stage_count > 0:
             stats_stages.append({'nome': 'Sem Stage', 'count': no_stage_count})
 
+        # Utilizadores: apenas os que criaram tarefas VÁLIDAS (com projeto)
         user_stats = []
         for user in User.search([]):
-            count = _valid_count([('create_uid', '=', user.id)])
+            count = Task.search_count([
+                ('create_uid', '=', user.id),
+                ('name', '!=', False),
+                ('name', '!=', ''),
+                ('project_id', '!=', False),
+            ])
             if count > 0:
                 user_stats.append({'nome': user.name, 'count': count})
 
-        tasks_no_stage = Task.search([('stage_id', '=', False), ('name', '!=', False), ('name', '!=', '')])
+        # Lead time: apenas tarefas sem stage E com projeto
+        tasks_no_stage = Task.search([
+            ('stage_id', '=', False),
+            ('name', '!=', False),
+            ('name', '!=', ''),
+            ('project_id', '!=', False),
+        ])
         avg_lead_time = 0
         if tasks_no_stage:
             total_days = 0
@@ -119,7 +167,12 @@ def get_project_stats(project_id=None, user_id=None):
             avg_lead_time = total_days / len(tasks_no_stage)
 
         week_ago = datetime.now() - timedelta(days=7)
-        tasks_week = _valid_count([('create_date', '>=', week_ago.strftime('%Y-%m-%d %H:%M:%S'))])
+        tasks_week = Task.search_count([
+            ('create_date', '>=', week_ago.strftime('%Y-%m-%d %H:%M:%S')),
+            ('name', '!=', False),
+            ('name', '!=', ''),
+            ('project_id', '!=', False),
+        ])
         throughput = tasks_week / 7 if tasks_week else 0
 
         return {

@@ -16,7 +16,7 @@ import xmlrpc.client
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv('/home/denispy/project-agent-system/.env')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info("🚀 AGENTE CARREGADO: versão final com correções")
@@ -247,6 +247,7 @@ def criar_stage(project_name: str, stage_name: str, sequence: int = 10, user_id=
         return f"ERRO: {str(e)}"
 
 def mover_tarefas(project_name: str, stage_name: str, user_id=None, is_manager=False) -> str:
+    """Move todas as tarefas de um projeto para um stage (cria o stage se não existir)."""
     if not is_manager:
         return "Permissão negada. Apenas gestores podem mover tarefas."
     try:
@@ -256,16 +257,21 @@ def mover_tarefas(project_name: str, stage_name: str, user_id=None, is_manager=F
         proj_id = _get_project_id_by_name(project_name)
         if not proj_id:
             return f"ERRO: Projeto '{project_name}' não encontrado."
-        stage_id = _get_stage_id(proj_id, stage_name, create_if_missing=False)
+
+        # Cria o stage automaticamente se não existir
+        stage_id = _get_stage_id(proj_id, stage_name, create_if_missing=True)
         if not stage_id:
-            return f"ERRO: Stage '{stage_name}' não encontrado no projeto '{project_name}'."
+            return f"ERRO: Não foi possível criar/obter o stage '{stage_name}'."
+
         task_ids = models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'search',
                                       [[('project_id', '=', proj_id)]])
         if not task_ids:
             return f"Projeto '{project_name}' não tem tarefas."
-        models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'write', [task_ids, {'stage_id': stage_id}])
+        models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, 'project.task', 'write',
+                          [task_ids, {'stage_id': stage_id}])
         return f"SUCESSO: {len(task_ids)} tarefas movidas para '{stage_name}'."
     except Exception as e:
+        logger.error(f"Erro em mover_tarefas: {e}")
         return f"ERRO: {str(e)}"
 
 # ========================== FUNÇÃO CORRIGIDA: mover_tarefa_unica ==========================
