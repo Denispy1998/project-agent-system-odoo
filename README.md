@@ -21,20 +21,21 @@ Sistema multiagente integrado no Odoo 19 que permite gerir projetos via linguage
 - HTML5, CSS3, JavaScript (Chart.js)
 
 ## 📁 Estrutura
-project-agent-system-odoo/
-├── agent/ # Agente IA
-│ ├── chat_agent.py
-│ └── setup_users.py # Script universal (sem IDs fixos)
-├── odoo-module/ # Módulo Odoo (meu_assistente_ia)
-│ ├── manifest.py
-│ ├── controllers/
-│ ├── security/
-│ ├── static/
-│ └── views/
-├── docs/ # Documentação
-└── README.md
 
-text
+```
+project-agent-system-odoo/
+├── agent/                  # Agente IA
+│   ├── chat_agent.py
+│   └── setup_users.py      # Script universal
+├── odoo-module/            # Módulo Odoo
+│   ├── __manifest__.py
+│   ├── controllers/
+│   ├── security/
+│   ├── static/
+│   └── views/
+├── docs/                   # Documentação
+└── README.md
+```
 
 ## 🚀 Instalação Rápida
 
@@ -49,64 +50,77 @@ text
 ```bash
 git clone https://github.com/Denispy1998/project-agent-system-odoo.git
 cd project-agent-system-odoo
-3. Configurar o agente
-bash
+```
+
+### 3. Configurar o agente
+
+```bash
 mkdir -p ~/project-agent-system
 cp agent/chat_agent.py ~/project-agent-system/
 cp agent/setup_users.py ~/project-agent-system/
 cd ~/project-agent-system
-nano .env   # Adicionar GROQ_API_KEY
-4. Copiar o módulo para o Odoo
-bash
+nano .env
+```
+
+### 4. Copiar o módulo para o Odoo
+
+```bash
 sudo cp -r odoo-module /opt/odoo/odoo19/addons/meu_assistente_ia
-5. Instalar o módulo
-bash
+```
+
+### 5. Instalar o módulo
+
+```bash
 cd /opt/odoo/odoo19
 source ../venv-19/bin/activate
 pip install groq python-dotenv
 python odoo-bin -c ~/odoo19.conf -d odoo -i project,mail,website --stop-after-init
 python odoo-bin -c ~/odoo19.conf -d odoo -i meu_assistente_ia --stop-after-init
-6. Criar utilizadores de teste
-bash
+```
+
+### 6. Criar utilizadores de teste
+
+```bash
 cd ~/project-agent-system
 python3 -m venv venv
 source venv/bin/activate
 pip install groq python-dotenv
 python setup_users.py
-7. Arrancar
-bash
+```
+
+### 7. Arrancar
+
+```bash
 cd /opt/odoo/odoo19
 source ../venv-19/bin/activate
 python odoo-bin -c ~/odoo19.conf
-Aceder a: http://localhost:8069/assistente
+```
 
-🔐 Credenciais de Teste
-Utilizador	Password	Papel
-admin	admin	Gestor de Projeto
-joao	joao	Membro de Equipa
-jose	jose	Membro de Equipa
-📊 Funcionalidades
-O agente entende comandos em português, tais como:
+Aceder a: `http://localhost:8069/assistente`
 
-Lista os projetos existentes
+## 🔐 Credenciais de Teste
 
-Cria o projeto "Vendas" com tarefas A, B, C
+| Utilizador | Password | Papel |
+|------------|----------|-------|
+| admin | admin | Gestor de Projeto |
+| joao | joao | Membro de Equipa |
+| jose | jose | Membro de Equipa |
 
-Adiciona a tarefa "D" ao projeto "Vendas"
+## 📊 Funcionalidades
 
-Cria o stage "REVIEW" com sequência 15 para o projeto "Vendas"
+O agente entende comandos em português:
 
-Move todas as tarefas do projeto "Vendas" para o stage "REVIEW"
+- `Lista os projetos existentes`
+- `Cria o projeto "Vendas" com tarefas A, B, C`
+- `Adiciona a tarefa "D" ao projeto "Vendas"`
+- `Cria o stage "REVIEW" com sequência 15 para o projeto "Vendas"`
+- `Move todas as tarefas do projeto "Vendas" para o stage "REVIEW"`
+- `Move a tarefa "A" do projeto "Vendas" para o stage "FASE_2"`
+- `Analisa os riscos do projeto "Vendas"`
+- `Prioriza as tarefas do projeto "Vendas"`
+- `Dá-me um resumo do projeto "Vendas"`
+- `Elimina o projeto "Vendas"`
 
-Move a tarefa "A" do projeto "Vendas" para o stage "FASE_2" (cria o stage automaticamente)
+## 📄 Licença
 
-Analisa os riscos do projeto "Vendas"
-
-Prioriza as tarefas do projeto "Vendas"
-
-Dá-me um resumo do projeto "Vendas"
-
-Elimina o projeto "Vendas"
-
-📄 Licença
 MIT
