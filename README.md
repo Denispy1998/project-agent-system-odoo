@@ -86,12 +86,14 @@ python odoo-bin -c ~/odoo19.conf
 Aceder a: http://localhost:8069/assistente
 
 🔐 Credenciais de Teste
+
 Utilizador	Password	Papel
-admin  	         admin	   Gestor de Projeto
-joao	         joao	   Membro de Equipa
-jose	         jose	   Membro de Equipa
+admin	admin	Gestor de Projeto
+joao	joao	Membro de Equipa
+jose	jose	Membro de Equipa
 
 📊 Funcionalidades
+
 O agente entende comandos em português:
 
 Lista os projetos existentes
