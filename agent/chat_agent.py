@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
-Agente IA – Versão Final (Corrigida)
-- Criação automática de stages ao mover tarefa única
-- Domínios corrigidos para Odoo 19
-- Logs detalhados
+Agente IA — Ecossistema de Gestão de Projetos
+==============================================
+
+Agente conversacional que interpreta comandos em linguagem natural e executa
+operações no Odoo via XML-RPC.
+
+Funcionalidades (14 ferramentas):
+- listar_projetos, criar_projeto, adicionar_tarefa, listar_tarefas
+- listar_stages, criar_stage, mover_tarefas, mover_tarefa_unica
+- eliminar_tarefa, eliminar_stage, eliminar_projeto
+- analisar_riscos, priorizar_tarefas, resumo_projeto
+
+Estratégia híbrida:
+1. Fallback direto com expressões regulares (rápido, sem custo de tokens)
+2. LLM Groq (openai/gpt-oss-20b) para comandos não reconhecidos
+
+Autor: Denilson Fragoso Da Silva Santos (IST-1113142)
 """
 
 import os
