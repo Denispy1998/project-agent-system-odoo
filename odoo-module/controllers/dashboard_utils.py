@@ -32,12 +32,12 @@ def get_project_stats(project_id=None):
             return {
                 'project_name': project.name,
                 'task_list': task_list,
-                'total_tarefas': len(tasks),
+                'total_tasks': len(tasks),
             }
 
         # ---- Global stats ----
-        total_projetos = Project.search_count([])
-        total_tarefas = Task.search_count([('name', '!=', False)])
+        total_projects = Project.search_count([])
+        total_tasks = Task.search_count([('name', '!=', False)])
 
         # Stats by stage (safe)
         stats_stages = []
@@ -51,7 +51,7 @@ def get_project_stats(project_id=None):
                 stage = g.get('stage_id')
                 name = stage[1] if stage else 'No Stage'
                 count = g.get('stage_id_count', 0) or g.get('__count', 0)
-                stats_stages.append({'nome': name, 'count': count})
+                stats_stages.append({'name': name, 'count': count})
         except Exception as e:
             _logger.warning(f"Stage grouping failed: {e}")
 
@@ -67,13 +67,13 @@ def get_project_stats(project_id=None):
                 user = g.get('create_uid')
                 name = user[1] if user else 'Unknown'
                 count = g.get('create_uid_count', 0) or g.get('__count', 0)
-                user_stats.append({'nome': name, 'count': count})
+                user_stats.append({'name': name, 'count': count})
         except Exception as e:
             _logger.warning(f"User grouping failed: {e}")
 
         return {
-            'total_projetos': total_projetos,
-            'total_tarefas': total_tarefas,
+            'total_projects': total_projects,
+            'total_tasks': total_tasks,
             'stats_stages': stats_stages,
             'user_stats': user_stats,
             'avg_lead_time': 0.0,
@@ -82,8 +82,8 @@ def get_project_stats(project_id=None):
     except Exception as e:
         _logger.error(f"get_project_stats error: {e}")
         return {
-            'total_projetos': 0,
-            'total_tarefas': 0,
+            'total_projects': 0,
+            'total_tasks': 0,
             'stats_stages': [],
             'user_stats': [],
             'avg_lead_time': 0.0,

@@ -485,8 +485,8 @@ class ChatbotController(http.Controller):
             </div>
 
             <div class="home-stats">
-                <div class="home-stat"><h3>{stats.get('total_projetos', 0)}</h3><p>Projects</p></div>
-                <div class="home-stat"><h3>{stats.get('total_tarefas', 0)}</h3><p>Tasks</p></div>
+                <div class="home-stat"><h3>{stats.get('total_projects', 0)}</h3><p>Projects</p></div>
+                <div class="home-stat"><h3>{stats.get('total_tasks', 0)}</h3><p>Tasks</p></div>
                 <div class="home-stat"><h3>{len(stats.get('stats_stages', []))}</h3><p>Stages</p></div>
                 <div class="home-stat"><h3>{stats.get('avg_lead_time', 0):.1f}</h3><p>Lead Time</p></div>
                 <div class="home-stat"><h3>{stats.get('throughput', 0):.1f}</h3><p>Tasks/day</p></div>
@@ -930,20 +930,20 @@ class ChatbotController(http.Controller):
         stage_list = stats.get('stats_stages', [])
         user_list = stats.get('user_stats', [])
 
-        stage_labels = json.dumps([s['nome'] for s in stage_list])
+        stage_labels = json.dumps([s['name'] for s in stage_list])
         stage_data = json.dumps([s['count'] for s in stage_list])
         stage_colors = json.dumps(_chart_colors(len(stage_list)))
 
-        user_labels = json.dumps([u['nome'] for u in user_list])
+        user_labels = json.dumps([u['name'] for u in user_list])
         user_data = json.dumps([u['count'] for u in user_list])
 
         stage_detail = ''.join(
-            f'<div class="detail-item"><span class="label">{s["nome"]}</span><span class="value">{s["count"]}</span></div>'
+            f'<div class="detail-item"><span class="label">{s["name"]}</span><span class="value">{s["count"]}</span></div>'
             for s in stage_list
         ) or '<p style="color:#9ca3af;">No data</p>'
 
         user_detail = ''.join(
-            f'<div class="detail-item"><span class="label">{u["nome"]}</span><span class="value">{u["count"]}</span></div>'
+            f'<div class="detail-item"><span class="label">{u["name"]}</span><span class="value">{u["count"]}</span></div>'
             for u in user_list
         ) or '<p style="color:#9ca3af;">No data</p>'
 
@@ -953,8 +953,8 @@ class ChatbotController(http.Controller):
             <p style="color: var(--muted); margin-bottom: 30px;">Overview of all projects and tasks</p>
 
             <div class="stats-grid">
-                <div class="stat-card"><h3>{stats.get('total_projetos', 0)}</h3><p>Projects</p></div>
-                <div class="stat-card"><h3>{stats.get('total_tarefas', 0)}</h3><p>Tasks</p></div>
+                <div class="stat-card"><h3>{stats.get('total_projects', 0)}</h3><p>Projects</p></div>
+                <div class="stat-card"><h3>{stats.get('total_tasks', 0)}</h3><p>Tasks</p></div>
                 <div class="stat-card"><h3>{len(stage_list)}</h3><p>Stages</p></div>
                 <div class="stat-card"><h3>{stats.get('avg_lead_time', 0):.1f}</h3><p>Lead Time</p></div>
                 <div class="stat-card"><h3>{stats.get('throughput', 0):.1f}</h3><p>Tasks/day</p></div>
