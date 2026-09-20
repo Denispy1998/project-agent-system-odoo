@@ -1,7 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_meu_assistente_ia_project_manager,meu_assistente_ia.project.manager,project.model_project_project,base.group_user,1,1,1,1
-access_meu_assistente_ia_project_member,meu_assistente_ia.project.member,project.model_project_project,base.group_user,1,0,0,0
-access_meu_assistente_ia_task_manager,meu_assistente_ia.task.manager,project.model_project_task,base.group_user,1,1,1,1
-access_meu_assistente_ia_task_member,meu_assistente_ia.task.member,project.model_project_task,base.group_user,1,0,0,0
-access_meu_assistente_ia_stage_manager,meu_assistente_ia.stage.manager,project.model_project_task_type,base.group_user,1,1,1,1
-access_meu_assistente_ia_stage_member,meu_assistente_ia.stage.member,project.model_project_task_type,base.group_user,1,0,0,0
+access_ai_session_user,ai.session.user,model_ai_session,base.group_user,1,1,1,1

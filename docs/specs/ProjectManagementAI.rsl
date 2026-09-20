@@ -1,0 +1,142 @@
+System ProjectManagementAI : Application {
+
+    title "AI Project Management Ecosystem"
+    version "2.0"
+    description "Multi-agent AI ecosystem for project management integrated with Odoo 19"
+
+    // ============================================================
+    // ACTORS
+    // ============================================================
+    Actor ProjectManager {
+        description "User with full write access to projects, tasks and stages."
+    }
+
+    Actor TeamMember {
+        description "User with read-only access to projects, tasks and reports."
+    }
+
+    Actor ProductManager {
+        description "User focused on the product backlog and priorities."
+    }
+
+    Actor Administrator {
+        description "System administrator with full control over the ecosystem."
+    }
+
+    // ============================================================
+    // GOALS
+    // ============================================================
+    Goal g_AutomateProjectManagement : "Automate project management through AI agents" {
+        description "The system shall support project, task and stage management in natural language."
+    }
+
+    Goal g_AutomateReporting : "Automate weekly reports" {
+        description "The system shall generate and deliver weekly ecosystem reports automatically."
+    }
+
+    Goal g_MultiAgentCollaboration : "Orchestrate multiple AI agents" {
+        description "The system shall route requests to specialized AI agents."
+    }
+
+    Goal g_ContextPersistence : "Persist conversation context" {
+        description "The system shall keep multiple chat sessions with persistent context per user."
+    }
+
+    Goal g_ModelFlexibility : "Support multiple LLM providers" {
+        description "The user shall be able to choose between different LLM providers per session."
+    }
+
+    // ============================================================
+    // FUNCTIONAL REQUIREMENTS
+    // ============================================================
+    FunctionalRequirement fr_MultiAgent : System {
+        statement "The system shall provide multiple specialized AI agents: Project Manager, Team Member, Reporting, and Diagram."
+        priority VeryHigh
+    }
+
+    FunctionalRequirement fr_ProjectManagement : System {
+        statement "The system shall allow Project Managers to create, update, move and delete projects, tasks and stages via natural language."
+        priority VeryHigh
+    }
+
+    FunctionalRequirement fr_ReadOnlyAccess : System {
+        statement "The system shall allow Team Members to list and analyse projects, tasks and risks but not modify data."
+        priority High
+    }
+
+    FunctionalRequirement fr_ChatSessions : System {
+        statement "The system shall support multiple persistent chat sessions per user with full conversation history."
+        priority High
+    }
+
+    FunctionalRequirement fr_ModelSelection : System {
+        statement "The system shall allow the user to select the LLM model (Groq, OpenAI, Anthropic) per chat session."
+        priority High
+    }
+
+    FunctionalRequirement fr_WeeklyReport : System {
+        statement "The system shall automatically generate and email a weekly project status report."
+        priority High
+    }
+
+    FunctionalRequirement fr_Dashboards : System {
+        statement "The system shall provide a global dashboard and per-project sub-dashboards with charts."
+        priority Medium
+    }
+
+    FunctionalRequirement fr_ReportsExport : System {
+        statement "The system shall allow PDF and CSV export of project data."
+        priority Medium
+    }
+
+    FunctionalRequirement fr_DiagramGeneration : System {
+        statement "The system shall generate Mermaid diagrams from natural language descriptions."
+        priority Medium
+    }
+
+    FunctionalRequirement fr_Permissions : System {
+        statement "The system shall enforce role-based access control for Managers and Team Members."
+        priority VeryHigh
+    }
+
+    FunctionalRequirement fr_Copyright : System {
+        statement "The system shall display author and institution copyright on every page."
+        priority Low
+    }
+
+    // ============================================================
+    // QUALITY REQUIREMENTS
+    // ============================================================
+    QualityRequirement qr_ResponseTime : Performance {
+        statement "The system shall return chat responses within 15 seconds for 90% of requests."
+        target "P90 <= 15 s"
+        priority High
+    }
+
+    QualityRequirement qr_Reliability : Reliability {
+        statement "The system shall handle LLM rate limits gracefully with automatic retries."
+        target "3 retries with 65s backoff"
+        priority High
+    }
+
+    QualityRequirement qr_Usability : Usability {
+        statement "The system shall be usable by non-technical users through a natural language chat interface."
+        target "SUS score >= 80"
+        priority High
+    }
+
+    QualityRequirement qr_Idempotency : Correctness {
+        statement "All write operations shall be idempotent: repeating the same command yields the same result without duplicates."
+        priority VeryHigh
+    }
+
+    QualityRequirement qr_Security : Security {
+        statement "The system shall enforce role-based permissions on every write operation."
+        priority VeryHigh
+    }
+
+    QualityRequirement qr_Extensibility : Maintainability {
+        statement "The system shall support adding new LLM providers or agents without modifying existing code."
+        priority Medium
+    }
+}

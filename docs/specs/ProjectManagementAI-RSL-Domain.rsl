@@ -1,0 +1,156 @@
+Package AIProjectManagementEcosystem
+
+System AIProjectManagement "AI Project Management Ecosystem" : Application [
+    description "Web-based platform integrating AI for project management"
+]
+
+// Data Enumerations
+DataEnumeration AIModelProvider values (Groq, OpenAI, Anthropic)
+DataEnumeration UserRole values (ProjectManager, TeamMember, ProductManager, Administrator)
+DataEnumeration TaskStatus values (NoStage, InProgress, Completed, OnHold)
+
+// Data Entities
+DataEntity e_Project "Project" : Master [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute name : String(100) [constraints (NotNull)]
+    attribute taskCount : Integer [constraints (NotNull Derived ("Count of associated tasks"))]
+]
+
+DataEntity e_Task "Task" : Transaction [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute projectId : Integer [constraints (NotNull ForeignKey (e_Project))]
+    attribute name : String(200) [constraints (NotNull)]
+    attribute stage : String(50) [constraints (NotNull)]
+    attribute status : DataEnumeration TaskStatus
+]
+
+DataEntity e_Stage "Stage" : Reference [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute projectId : Integer [constraints (NotNull ForeignKey (e_Project))]
+    attribute name : String(50) [constraints (NotNull Unique)]
+    attribute sequence : Integer [constraints (NotNull)]
+]
+
+DataEntity e_AISession "AI Session" : Transaction [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute userId : Integer [constraints (NotNull ForeignKey (e_User))]
+    attribute name : String(100) [constraints (NotNull)]
+    attribute modelProvider : DataEnumeration AIModelProvider
+    attribute createdAt : Datetime [defaultValue "now" constraints (NotNull)]
+]
+
+DataEntity e_User "User" : Master [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute username : String(50) [constraints (NotNull Unique)]
+    attribute role : DataEnumeration UserRole
+    attribute email : Email [constraints (NotNull)]
+]
+
+DataEntity e_Agent "Agent" : Reference [
+    attribute id : Integer [constraints (PrimaryKey)]
+    attribute name : String(50) [constraints (NotNull)]
+    attribute type : String(550) [constraints (NotNull)]
+    attribute description : String(500)
+]
+
+// State Machines
+StateMachine sm_TaskLifecycle "Task Lifecycle" : Simple [
+    dataEntity e_Taskaks
+    state NoStage "No Stage Assigned" isInitial
+        useCase uc_MoveTask action aMoveTask nextState InProgress
+    state InProgress "Task In Progress"
+        useCase uc_MoveTask action aMoveTask nextState Completed
+        useCase uc_DeleteTask action aDeleteTask nextState Deleted
+    state Completed "Task Completed"
+        useCase uc_MoveTask action aMoveTask nextState OnHold
+    state OnHold "Task On Hold"
+        useCase uc_MoveTask action aMoveTask nextState InProgress
+    state Deletedeted "Task Deleted" isFinal
+]
+
+// Actors
+Actor a_ProjectedctManager "Project Manager" : User [
+    description "Manages projects and tasks"
+]
+
+Actor a_amMember "Team Member" : User [
+    Description "Contributes to Projects"
+]
+
+Actor a_ProductManager "Product Manager" : User [
+    Description "Manages Product Backlog"
+]
+
+Actor A_Admin "Administrator" : User [
+    Description "Manages System Configuration"
+]
+
+// Use Cases
+Use Case UC_CreateProject "Createate Projectroject" : Entity Create [
+    Primary Actor A_ProjectEDctManager
+    Data Entity E_ProjectEDt
+    Actions ACreate, AClose
+    Description "Creates A New ProjectEDt"
+]
+
+Use Case UC_AdddtAsK "Add Task" : Entity Create [
+    Primary Mary Actor A_ProectactManager
+    Data EntityEntitytyAsk
+    Actions ACreateate, AClose
+    Description descriptioncription "Adds A New Task To A ProjectEDT"
+]
+
+Use Case UC_MoveTask "Move Task" : Entity Update [
+    Primary Actor A_ProED TManager
+    Data Entity E_Task
+    Precondition "Task. Status! = 'NoStage'"
+    Post Condition "Task. Status! = 'InProgressess'"
+    Actions AMoveTask
+    Description "Moves A Task To A Different Stage"
+]
+
+Use Case UC_DeleteTask "Deleteete Task" : Entity Delete [
+    Primary Actor A_Pro ED Act Manager
+    Data Entity E_Task
+    Pre Condition "Task. Status! = 'In Progress' Or 'Completed Eted'"
+    Post Condition "Task. Is Permanently Dete ED"
+    Actions ADelete
+    Description "Permanently Dete ES A Task"
+]
+
+Use Case UC_CreateStage "Create Stage" : Entity Create [
+    Primary Actor A_ProED Act Manager
+    Data Entity E_Stage
+    Actions ACreate
+    Description "Creates A New Stage Within A Project"
+]
+
+Use Case UC_DeleteStage "Delete Stage" : Entity Delete [
+    Primary Actor A_ProED Act Manager
+    Data Entity E_Stage
+    Pre Condition "Stage. Contains No Tasks"
+    Post Condition "Stage. Is Permanently Dete ED"
+    Actions ADelete
+    Description "Permanently Dete ES A Stage"
+]
+
+Use Case UC_SwitchAIModel "Switch AI Model" : Entity Update Date [
+    Primary Actor A_ProED Act Manager
+    Data Entity E_AISession
+    Actions AS Witch Model
+    Description "Switches The AI Model Provider For An AI Session"
+]
+
+Use Case UC_GenerateReport "Generate Report" : Entity Report [
+    Primary Actor A_ProED Act Manager
+    Data Entity E_ProjectED
+    Actions AGenerateReport
+    Description "Generates A PDF Report For A Project"
+]
+
+Use Case UC_ExportData "Export Data" : Entities Interop Export [
+    Primary Actor A_Admin Min
+    Data Entity E_ProED , E_Task Ask
+    Actions AExport
+    Descriptioncriptionption "Exports Project Or Task Data To A File"
+]

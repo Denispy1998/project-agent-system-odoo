@@ -1,72 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data>
 
-    <!-- Actions -->
-    <record id="action_assistente_home" model="ir.actions.act_url">
-        <field name="name">Início — Ecossistema IA</field>
-        <field name="url">/assistente</field>
-        <field name="target">self</field>
-    </record>
+        <!-- URL Actions -->
+        <record id="action_open_chat" model="ir.actions.act_url">
+            <field name="name">AI Chat</field>
+            <field name="url">/assistente/page</field>
+            <field name="target">self</field>
+        </record>
 
-    <record id="action_assistente_chat" model="ir.actions.act_url">
-        <field name="name">Chat com Agente IA</field>
-        <field name="url">/assistente/page</field>
-        <field name="target">self</field>
-    </record>
+        <record id="action_open_dashboard" model="ir.actions.act_url">
+            <field name="name">AI Dashboard</field>
+            <field name="url">/assistente/dashboard</field>
+            <field name="target">self</field>
+        </record>
 
-    <record id="action_assistente_dashboard" model="ir.actions.act_url">
-        <field name="name">Dashboard de Métricas</field>
-        <field name="url">/assistente/dashboard</field>
-        <field name="target">self</field>
-    </record>
+        <record id="action_open_ecosystem" model="ir.actions.act_url">
+            <field name="name">AI Ecosystem</field>
+            <field name="url">/assistente</field>
+            <field name="target">self</field>
+        </record>
 
-    <record id="action_assistente_projetos" model="ir.actions.act_url">
-        <field name="name">Projetos</field>
-        <field name="url">/assistente/projetos</field>
-        <field name="target">self</field>
-    </record>
+        <!-- Top-level menu -->
+        <menuitem id="menu_ai_root"
+                  name="AI Ecosystem"
+                  web_icon="meu_assistente_ia,static/description/icon.png"
+                  sequence="10"/>
 
-    <record id="action_assistente_meus_projetos" model="ir.actions.act_url">
-        <field name="name">Meus Projetos</field>
-        <field name="url">/assistente/meus-projetos</field>
-        <field name="target">self</field>
-    </record>
+        <menuitem id="menu_ai_home"
+                  name="Home"
+                  parent="menu_ai_root"
+                  action="action_open_ecosystem"
+                  sequence="1"/>
 
-    <!-- Root Menu -->
-    <menuitem id="menu_assistente_root"
-              name="Ecossistema IA"
-              web_icon="meu_assistente_ia,static/description/icon.png"
-              sequence="5"/>
+        <menuitem id="menu_ai_chat"
+                  name="Chat"
+                  parent="menu_ai_root"
+                  action="action_open_chat"
+                  sequence="2"/>
 
-    <!-- Submenus -->
-    <menuitem id="menu_assistente_home"
-              name="🏠 Início"
-              parent="menu_assistente_root"
-              action="action_assistente_home"
-              sequence="10"/>
+        <menuitem id="menu_ai_dashboard"
+                  name="Dashboard"
+                  parent="menu_ai_root"
+                  action="action_open_dashboard"
+                  sequence="3"/>
 
-    <menuitem id="menu_assistente_chat"
-              name="💬 Chat"
-              parent="menu_assistente_root"
-              action="action_assistente_chat"
-              sequence="20"/>
-
-    <menuitem id="menu_assistente_dashboard"
-              name="📊 Dashboard"
-              parent="menu_assistente_root"
-              action="action_assistente_dashboard"
-              sequence="30"/>
-
-    <menuitem id="menu_assistente_projetos"
-              name="📁 Projetos"
-              parent="menu_assistente_root"
-              action="action_assistente_projetos"
-              sequence="40"/>
-
-    <menuitem id="menu_assistente_meus_projetos"
-              name="👤 Meus Projetos"
-              parent="menu_assistente_root"
-              action="action_assistente_meus_projetos"
-              sequence="50"/>
-
+    </data>
 </odoo>

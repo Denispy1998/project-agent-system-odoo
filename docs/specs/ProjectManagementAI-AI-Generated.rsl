@@ -1,0 +1,119 @@
+Package ProjectManagementAI
+
+System AIProjectManagement "AI Project Management Ecosystem" : Application [
+  description "Web-based platform integrating AI agents to augment traditional project management, focusing on natural language interaction and automated reporting."
+]
+
+// Stakeholders
+Stakeholder stk_ProjectManager "Project Managers" : Person : Person_Manager_ProjectManager [
+  description "Primary users responsible for planning, executing, and monitoring projects. Require full write access to create, modify, and delete projects, tasks, and stages."
+]
+
+Stakeholder stk_TeamMember "Team Members" : Person : Person_User [
+  description "Users contributing to projects, needing read-only access to view assigned tasks, stages, and risks."
+]
+
+Stakeholder stk_ProductManager "Product Managers" : Person : Person_Manager_FunctionalManager [
+  description "Users focused on product backlog and prioritization, consuming dashboards and task prioritization but not managing day-to-day execution."
+]
+
+Stakeholder stk_SystemAdmin "System Administrators" : Person : Person_Technical_SoftwareDeveloper [
+  description "Users responsible for system configuration, user management, AI microservice monitoring, and automated report configuration."
+]
+
+Stakeholder stk_Organization "The Organization" : Organization : Organization_Owner [
+  description "Entity owning the projects, benefiting from reduced management overhead and automated reporting."
+]
+
+// Functional Requirements
+FR fr_ChatInterface : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL allow users to interact through a natural language chat interface."
+]
+
+FR fr_PersistentChat : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL maintain multiple persistent chat sessions per user, preserving full conversation history."
+]
+
+FR fr_AIModelSelection : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL allow users to select the AI model provider (Groq, OpenAI, Anthropic) for each chat session."
+]
+
+FR fr_ReadOperations : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL support read operations: list projects, list tasks, list stages, analyze risks, prioritize tasks, and generate project summaries."
+]
+
+FR fr_WriteOperations : Functional [
+  stakeholder stk_ProjectManager
+  description "System SHALL allow project managers to perform write operations: create projects, add tasks, create stages, move tasks between stages, delete tasks, delete stages, and delete projects."
+]
+
+FR fr_Dashboards : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL provide global and per-project dashboards with interactive charts."
+]
+
+FR fr_ExportReports : Functional [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL allow exporting PDF reports and CSV files per project."
+]
+
+FR fr_AutomatedReports : Functional [
+  stakeholder stk_ProjectManager, stk_Organization
+  description "System SHALL automatically generate and deliver a weekly ecosystem report."
+]
+
+// Quality Requirements
+QR qr_ChatResponseTime : Performance : Performance_SystemResponseTime [
+  expression [ <= 15 Time_Sec ]
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "Chat interface SHALL respond within 15 seconds for 90% of requests."
+]
+
+QR qr_Reliability : Reliability : Reliability_Availability [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "System SHALL handle AI provider rate limits gracefully by retrying failed requests."
+]
+
+QR qr_Security : Security : Security_Authorization [
+  stakeholder stk_SystemAdmin, stk_Organization
+  description "All write operations SHALL be protected by role-based access control and executed under an authenticated Odoo user."
+]
+
+QR qr_Extensibility : Maintainability : Maintainability_Modifiability [
+  stakeholder stk_SystemAdmin
+  description "System SHALL allow adding new AI providers, specialized agents, and tools without modifying the existing codebase."
+]
+
+QR qr_Internationalization : Cultural : Cultural_Language [
+  stakeholder stk_ProjectManager, stk_TeamMember, stk_ProductManager
+  description "All user-facing strings, agent instructions, and documentation SHALL be in English."
+]
+
+// Constraints
+Constraint c_Usability : Usability : Usability_Operability [
+  description "Chat interface SHALL be usable by non-technical users through natural language responses."
+]
+
+Constraint c_Idempotency : Technological : Technological_DevelopmentTool [
+  description "All write operations SHALL be idempotent: repeating the same command yields the same result without creating duplicates."
+]
+
+Constraint c_ChatSessionScope : Technological : Technological_DevelopmentTool [
+  description "Each chat session SHALL be scoped to a single user and cannot be accessed by another user."
+]
+
+Constraint c_TeamMemberWriteRestriction : Organizational : Organizational_Management [
+  description "Team members SHALL not perform any write operation; such attempts SHALL be rejected with an explicit denial message."
+]
+
+Constraint c_WeeklyReportDelivery : Project : Project_Quality [
+  description "Weekly report SHALL be generated once per week and SHALL not repeat on failure; failed deliveries SHALL be logged but not block the schedule."
+]
+
+Constraint c_ProjectStageUniqueness : Technological : Technological_DevelopmentTool [
+  description "Each project SHALL have at most one personal stage set shared across the ecosystem."
+]

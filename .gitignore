@@ -1,10 +1,43 @@
+# ===== Python =====
 __pycache__/
 *.pyc
-.env
-*.log
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ===== Virtual environments =====
 venv/
+venv_19/
+venv_agents/
+env/
+ENV/
+
+# ===== Environment files (SECRETS!) =====
+.env
+.env.local
+.env.*.local
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Odoo =====
+*.db
+odoo-bin
+filestore/
+
+# ===== IDEs =====
 .idea/
 .vscode/
 *.swp
-odoo-bin
-*.db
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Backups =====
+backup_*/
+*.bak
+*~
