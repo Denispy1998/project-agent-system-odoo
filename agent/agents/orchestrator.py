@@ -15,20 +15,51 @@ from agents.diagram_agent import get_diagram_agent
 load_dotenv('/home/denispy/project-agent-system/.env')
 
 
+def _valid_key(key):
+    """Return True if the API key looks real (not a placeholder)."""
+    if not key:
+        return False
+    k = key.strip()
+    if k.lower().startswith(("your_", "sk-xxx", "xxx", "placeholder", "changeme")):
+        return False
+    if len(k) < 15:
+        return False
+    return True
+
+
 def get_llm(model_name: str = "groq"):
-    """Return a CrewAI LLM instance based on the selected model."""
+    """Return a CrewAI LLM instance. Falls back to Groq if the selected
+    provider has no valid API key configured."""
     if model_name == "openai":
+        key = os.getenv("OPENAI_API_KEY")
+        if _valid_key(key):
+            return LLM(
+                model="openai/gpt-4o",
+                temperature=0.0,
+                api_key=key,
+            )
+        print("[Orchestrator] OpenAI key invalid/missing -> fallback to Groq")
         return LLM(
-            model="openai/gpt-4o",
+            model="groq/qwen/qwen3.8-27b",
             temperature=0.0,
-            api_key=os.getenv("OPENAI_API_KEY"),
+            api_key=os.getenv("GROQ_API_KEY"),
         )
+
     if model_name == "anthropic":
+        key = os.getenv("ANTHROPIC_API_KEY")
+        if _valid_key(key):
+            return LLM(
+                model="anthropic/claude-3-5-sonnet-20241022",
+                temperature=0.0,
+                api_key=key,
+            )
+        print("[Orchestrator] Anthropic key invalid/missing -> fallback to Groq")
         return LLM(
-            model="anthropic/claude-3-5-sonnet-20241022",
+            model="groq/qwen/qwen3.8-27b",
             temperature=0.0,
-            api_key=os.getenv("ANTHROPIC_API_KEY"),
+            api_key=os.getenv("GROQ_API_KEY"),
         )
+
     return LLM(
         model="groq/qwen/qwen3.8-27b",
         temperature=0.0,
