@@ -30,12 +30,13 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq"):
+def call_agent_api(message, user_id, is_manager, model_name="groq", deep_thinking=False):
     try:
         r = requests.post(
             AGENT_API_URL,
             json={"message": message, "user_id": user_id,
-                  "is_manager": is_manager, "model_name": model_name},
+                  "is_manager": is_manager, "model_name": model_name,
+                  "deep_thinking": bool(deep_thinking)},
             timeout=180,
         )
         r.raise_for_status()
@@ -669,6 +670,16 @@ class ChatbotController(http.Controller):
     }
     .input-area button:hover:not(:disabled) { background: var(--primary-dark); transform: scale(1.05); }
     .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .session-item { position: relative; display: flex; align-items: center; gap: 8px; }
+        .session-item .session-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .session-item .session-actions { display: none; gap: 6px; padding-left: 6px; }
+        .session-item:hover .session-actions { display: flex; }
+        .session-item .session-actions i { cursor: pointer; opacity: 0.5; font-size: 0.75rem; transition: opacity 0.15s; }
+        .session-item .session-actions i:hover { opacity: 1; color: #fff; }
+        .session-item .session-actions .fa-trash:hover { color: #ff6b6b; }
+        .deep-toggle { display: flex; align-items: center; gap: 6px; margin-left: 12px; padding: 6px 12px; border-radius: 8px; background: #f4f1f3; color: #714B67; font-size: 0.85rem; cursor: pointer; user-select: none; }
+        .deep-toggle input { cursor: pointer; }
+        .deep-toggle:hover { background: #ebe4ea; }
 </style>
 </head>
 <body>
@@ -691,6 +702,10 @@ class ChatbotController(http.Controller):
             <i class="fas fa-robot robot"></i>
             <h2 id="sessionTitle">AI Assistant</h2>
             """ + mode_badge + """
+            <label class="deep-toggle" title="Deep thinking: more reasoning steps for complex queries">
+                <input type="checkbox" id="deepThinking">
+                <i class="fas fa-brain"></i> Deep
+            </label>
             <select id="modelSelect" onchange="changeModel()">
                 <option value="groq">Groq · Qwen 3.8 27B</option>
                 <option value="openai">OpenAI · GPT-4o</option>
@@ -730,7 +745,7 @@ class ChatbotController(http.Controller):
                         </button>
                     </div>
                     <div class="welcome-hint">
-                        <strong>Tip:</strong> ${IS_MANAGER ? 'Try "list all projects", "create a stage called Backlog in Projecto de Vendas", or "analyze risks for Projecto de Vendas".' : 'Try "list all projects", "list tasks of Projecto de Vendas", or "analyze risks for Projecto de Vendas".'}
+                        <strong>Tip:</strong> ${IS_MANAGER ? 'Try "list all projects", "create a project called Demo with 3 tasks", or "generate a flowchart".' : 'Try "list all projects", "list all tasks", or "generate a flowchart".'}
                     </div>
                 </div>
             `;
@@ -752,11 +767,42 @@ class ChatbotController(http.Controller):
                 sessions.forEach(s => {
                     const div = document.createElement('div');
                     div.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
-                    div.innerHTML = `<i class="fas fa-comment"></i><span class="session-name">${s.name}</span>`;
+                    const safeName = (s.name || '').replace(/'/g, "\\'");
+                    div.innerHTML = `<i class="fas fa-comment"></i><span class="session-name">${s.name}</span><span class="session-actions"><i class="fas fa-pen" title="Rename" onclick="event.stopPropagation(); renameSession(${s.id}, '${safeName}')"></i><i class="fas fa-trash" title="Delete" onclick="event.stopPropagation(); deleteSession(${s.id}, '${safeName}')"></i></span>`;
                     div.onclick = () => selectSession(s.id);
                     list.appendChild(div);
                 });
             } catch (e) { console.error('loadSessions error', e); }
+        }
+
+        async function renameSession(id, currentName) {
+            const newName = prompt('New session name:', currentName);
+            if (!newName || newName === currentName) return;
+            try {
+                const res = await fetch('/assistente/sessions/' + id + '/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName })
+                });
+                if (!res.ok) { alert('Rename failed (' + res.status + ')'); return; }
+                await loadSessions();
+                if (currentSessionId === id) {
+                    document.getElementById('sessionTitle').textContent = newName;
+                }
+            } catch (e) { alert('Rename error: ' + e); }
+        }
+
+        async function deleteSession(id, currentName) {
+            if (!confirm('Delete session "' + currentName + '"? This cannot be undone.')) return;
+            try {
+                const res = await fetch('/assistente/sessions/' + id + '/delete', { method: 'POST' });
+                if (!res.ok) { alert('Delete failed (' + res.status + ')'); return; }
+                if (currentSessionId === id) {
+                    currentSessionId = null;
+                    renderWelcome();
+                }
+                await loadSessions();
+            } catch (e) { alert('Delete error: ' + e); }
         }
 
         async function createSession() {
@@ -793,7 +839,7 @@ class ChatbotController(http.Controller):
                             <h1>${data.name}</h1>
                             <p>This conversation is empty. Start by typing a message below.</p>
                             <div class="welcome-hint">
-                                <strong>Try:</strong> "list all projects" or "analyze risks for Projecto de Vendas".
+                                <strong>Try:</strong> "list all projects" or "generate a flowchart".
                             </div>
                         </div>
                     `;
@@ -824,10 +870,12 @@ class ChatbotController(http.Controller):
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'user', content: text })
                 });
+                const deepCb = document.getElementById('deepThinking');
+                const deepValue = deepCb ? deepCb.checked : false;
                 const res = await fetch('/assistente/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId })
+                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId, deep_thinking: deepValue })
                 });
                 const data = await res.json();
                 const reply = data.resposta || data.erro || 'No response';
@@ -868,7 +916,9 @@ class ChatbotController(http.Controller):
             const chat = document.getElementById('chatMessages');
             const div = document.createElement('div');
             div.className = 'message bot';
-            div.innerHTML = '<div class="bubble typing">Thinking…</div>';
+            const deepOn = document.getElementById('deepThinking');
+            const label = (deepOn && deepOn.checked) ? 'Thinking deeply…' : 'Thinking…';
+            div.innerHTML = '<div class="bubble typing">' + label + '</div>';
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
             return div;
@@ -904,6 +954,7 @@ class ChatbotController(http.Controller):
             if not pergunta:
                 return Response(json.dumps({'erro': 'Empty message'}), status=400)
 
+            deep_thinking = bool(data.get('deep_thinking', False))
             user = request.env.user
             is_manager = _is_user_manager(user.id)
             model_name = "groq"
@@ -912,9 +963,9 @@ class ChatbotController(http.Controller):
                 if session.exists():
                     model_name = session.model_name or "groq"
 
-            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name}")
+            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} deep: {deep_thinking}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, deep_thinking)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:
@@ -1329,4 +1380,24 @@ class ChatbotController(http.Controller):
             return Response(json.dumps({'error': 'Session not found'}), status=404)
         data = json.loads(request.httprequest.data)
         session.model_name = data.get('model_name', 'groq')
+        return Response(json.dumps({'status': 'ok'}), content_type='application/json')
+
+    @http.route('/assistente/sessions/<int:session_id>/rename', type='http', auth='user', methods=['POST'], csrf=False)
+    def rename_session(self, session_id):
+        session = request.env['ai.session'].browse(session_id)
+        if not session.exists() or session.user_id.id != request.env.user.id:
+            return Response(json.dumps({'error': 'Session not found'}), status=404)
+        data = json.loads(request.httprequest.data)
+        new_name = (data.get('name') or '').strip()
+        if not new_name:
+            return Response(json.dumps({'error': 'Empty name'}), status=400)
+        session.name = new_name
+        return Response(json.dumps({'status': 'ok', 'name': new_name}), content_type='application/json')
+
+    @http.route('/assistente/sessions/<int:session_id>/delete', type='http', auth='user', methods=['POST'], csrf=False)
+    def delete_session(self, session_id):
+        session = request.env['ai.session'].browse(session_id)
+        if not session.exists() or session.user_id.id != request.env.user.id:
+            return Response(json.dumps({'error': 'Session not found'}), status=404)
+        session.unlink()
         return Response(json.dumps({'status': 'ok'}), content_type='application/json')

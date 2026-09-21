@@ -13,6 +13,7 @@ class ChatRequest(BaseModel):
     user_id: int = 0
     is_manager: bool = False
     model_name: str = "groq"
+    deep_thinking: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -26,6 +27,7 @@ def run_agent(req: ChatRequest):
         user_id=req.user_id,
         is_manager=req.is_manager,
         model_name=req.model_name,
+        deep_thinking=req.deep_thinking,
     )
     return ChatResponse(response=result)
 

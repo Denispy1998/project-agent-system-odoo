@@ -17,19 +17,13 @@ load_dotenv('/home/denispy/project-agent-system/.env')
 
 def get_llm(model_name: str = "groq"):
     """Return a CrewAI LLM instance based on the selected model."""
-    if model_name == "groq":
-        return LLM(
-            model="groq/qwen/qwen3.8-27b",
-            temperature=0.0,
-            api_key=os.getenv("GROQ_API_KEY"),
-        )
-    elif model_name == "openai":
+    if model_name == "openai":
         return LLM(
             model="openai/gpt-4o",
             temperature=0.0,
             api_key=os.getenv("OPENAI_API_KEY"),
         )
-    elif model_name == "anthropic":
+    if model_name == "anthropic":
         return LLM(
             model="anthropic/claude-3-5-sonnet-20241022",
             temperature=0.0,
@@ -61,6 +55,7 @@ def run_orchestrator(
     user_id: Optional[int] = None,
     is_manager: bool = False,
     model_name: str = "groq",
+    deep_thinking: bool = False,
 ) -> str:
     # === Permission guard: block write intents for team members ===
     write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit",
@@ -98,6 +93,14 @@ def run_orchestrator(
                 agent = get_team_member_agent(llm)
                 task_desc = user_message
 
+            if deep_thinking:
+                task_desc = (
+                    "THINK STEP-BY-STEP before answering. Take your time to reason about "
+                    "the problem, consider alternatives, and verify your plan. "
+                    "Then provide a clear, final answer.\n\n"
+                    f"User request: {task_desc}"
+                )
+
             task = Task(
                 description=task_desc,
                 agent=agent,
@@ -111,8 +114,8 @@ def run_orchestrator(
             err = str(e).lower()
             is_rate_limit = "rate limit" in err or "429" in err or "rate_limit" in err
             if is_rate_limit and attempt < max_attempts:
-                print(f"Rate limit hit. Waiting {wait_seconds}s before retry "
-                      f"({attempt}/{max_attempts})...")
+                print(f"[Orchestrator] Rate limit hit. Waiting {wait_seconds}s "
+                      f"before retry ({attempt}/{max_attempts})...")
                 time.sleep(wait_seconds)
                 continue
             return f"Orchestrator error: {e}\n{traceback.format_exc()}"
