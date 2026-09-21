@@ -680,7 +680,21 @@ class ChatbotController(http.Controller):
         .deep-toggle { display: flex; align-items: center; gap: 6px; margin-left: 12px; padding: 6px 12px; border-radius: 8px; background: #f4f1f3; color: #714B67; font-size: 0.85rem; cursor: pointer; user-select: none; }
         .deep-toggle input { cursor: pointer; }
         .deep-toggle:hover { background: #ebe4ea; }
+        .bubble .mermaid { background: #ffffff; border-radius: 8px; padding: 12px; margin: 8px 0; text-align: center; overflow-x: auto; border: 1px solid #e5e5e5; }
+        .bubble .mermaid svg { max-width: 100%; height: auto; }
+        .bubble.bubble-wide { max-width: 90%; min-width: 420px; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.mermaid) {
+            mermaid.initialize({ startOnLoad: false, theme: 'default' });
+            console.log('[Mermaid] initialized v10.9.1');
+        } else {
+            console.warn('[Mermaid] CDN failed to load');
+        }
+    });
+</script>
 </head>
 <body>
     <div class="sidebar">
@@ -897,6 +911,24 @@ class ChatbotController(http.Controller):
             }
         }
 
+        let mermaidCounter = 0;
+
+        async function renderMermaidBlock(container, code) {
+            if (!window.mermaid) {
+                container.textContent = code;
+                return;
+            }
+            const id = 'mermaid-svg-' + (++mermaidCounter);
+            try {
+                const { svg } = await mermaid.render(id, code);
+                container.innerHTML = svg;
+                container.setAttribute('data-rendered', '1');
+            } catch (e) {
+                console.error('Mermaid render error', e);
+                container.textContent = code;
+            }
+        }
+
         function addMessage(text, isUser, isDenied) {
             const chat = document.getElementById('chatMessages');
             const welcome = chat.querySelector('.welcome-container');
@@ -905,10 +937,50 @@ class ChatbotController(http.Controller):
             div.className = 'message ' + (isUser ? 'user' : 'bot');
             const bubble = document.createElement('div');
             bubble.className = 'bubble' + (isDenied ? ' denied' : '');
-            bubble.textContent = text;
-            div.appendChild(bubble);
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
+
+            const mermaidRegex = /```mermaid\s+([\s\S]*?)```/g;
+            if (!isUser && mermaidRegex.test(text)) {
+                mermaidRegex.lastIndex = 0;
+                bubble.classList.add('bubble-wide');
+                let lastIndex = 0;
+                let match;
+                const mermaidBlocks = [];
+                while ((match = mermaidRegex.exec(text)) !== null) {
+                    if (match.index > lastIndex) {
+                        const t = text.slice(lastIndex, match.index).trim();
+                        if (t) {
+                            const tn = document.createElement('div');
+                            tn.textContent = t;
+                            bubble.appendChild(tn);
+                        }
+                    }
+                    const diagram = document.createElement('div');
+                    diagram.className = 'mermaid';
+                    diagram.textContent = match[1].trim();
+                    bubble.appendChild(diagram);
+                    mermaidBlocks.push(diagram);
+                    lastIndex = mermaidRegex.lastIndex;
+                }
+                const tail = text.slice(lastIndex).trim();
+                if (tail) {
+                    const tn = document.createElement('div');
+                    tn.textContent = tail;
+                    bubble.appendChild(tn);
+                }
+                div.appendChild(bubble);
+                chat.appendChild(div);
+                chat.scrollTop = chat.scrollHeight;
+                setTimeout(function () {
+                    mermaidBlocks.forEach(function (b) {
+                        renderMermaidBlock(b, b.textContent);
+                    });
+                }, 30);
+            } else {
+                bubble.textContent = text;
+                div.appendChild(bubble);
+                chat.appendChild(div);
+                chat.scrollTop = chat.scrollHeight;
+            }
             return div;
         }
 
