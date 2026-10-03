@@ -41,3 +41,6 @@ Thumbs.db
 backup_*/
 *.bak
 *~
+
+# ===== Reports (kept local — not for public repo) =====
+docs/report/
