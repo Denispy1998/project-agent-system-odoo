@@ -41,6 +41,7 @@ def get_llm(model_name: str = "groq"):
         print("[Orchestrator] OpenAI key invalid/missing -> fallback to Groq")
         return LLM(
             model="groq/qwen/qwen3.8-27b",
+            max_tokens=512,
             temperature=0.0,
             api_key=os.getenv("GROQ_API_KEY"),
         )
@@ -56,12 +57,14 @@ def get_llm(model_name: str = "groq"):
         print("[Orchestrator] Anthropic key invalid/missing -> fallback to Groq")
         return LLM(
             model="groq/qwen/qwen3.8-27b",
+            max_tokens=512,
             temperature=0.0,
             api_key=os.getenv("GROQ_API_KEY"),
         )
 
     return LLM(
         model="groq/qwen/qwen3.8-27b",
+        max_tokens=512,
         temperature=0.0,
         api_key=os.getenv("GROQ_API_KEY"),
     )
@@ -79,6 +82,27 @@ def _detect_agent(user_message: str, is_manager: bool = False) -> str:
     if any(k in msg for k in ["create", "add", "delete", "remove", "move", "update"]) and is_manager:
         return "project_manager"
     return "project_manager" if is_manager else "team_member"
+
+
+def _recover_tool_output(crew):
+    """Best-effort extraction of a tool output from a partially
+    executed Crew. Returns a human-readable string or None."""
+    if crew is None:
+        return None
+    try:
+        tasks = getattr(crew, "tasks", None) or []
+        for t in reversed(tasks):
+            out = getattr(t, "output", None)
+            if out is None:
+                continue
+            raw = getattr(out, "raw", None)
+            if raw and str(raw).strip():
+                return str(raw)
+            if isinstance(out, str) and out.strip():
+                return out
+    except Exception:
+        pass
+    return None
 
 
 def run_orchestrator(
@@ -103,8 +127,12 @@ def run_orchestrator(
             "list tasks, analyze risks, prioritize work, or generate summaries."
         )
 
-    max_attempts = 3
+    # Idempotent write tools: retries are wasteful (rewrite already happened)
+    _is_write = wants_write
+    max_attempts = 1 if _is_write else 3
     wait_seconds = 65
+
+    crew = None
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -144,11 +172,28 @@ def run_orchestrator(
         except Exception as e:
             err = str(e).lower()
             is_rate_limit = "rate limit" in err or "429" in err or "rate_limit" in err
+            is_empty = "invalid response" in err or "none or empty" in err
+
+            recovered = _recover_tool_output(crew)
+            if recovered:
+                return recovered
+
             if is_rate_limit and attempt < max_attempts:
                 print(f"[Orchestrator] Rate limit hit. Waiting {wait_seconds}s "
                       f"before retry ({attempt}/{max_attempts})...")
                 time.sleep(wait_seconds)
                 continue
-            return f"Orchestrator error: {e}\n{traceback.format_exc()}"
 
-    return "Orchestrator error: max retry attempts reached."
+            if is_rate_limit:
+                return ("Rate limit reached on Groq free tier. "
+                        "Please retry in 60 seconds.")
+
+            if is_empty:
+                return ("LLM returned an empty response. "
+                        "Please retry in 30 seconds.")
+
+            return (f"Orchestrator error: {type(e).__name__}. "
+                    "Please retry in 30 seconds.")
+
+
+# End of file

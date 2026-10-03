@@ -20,4 +20,6 @@ def get_reporting_agent(llm) -> Agent:
         llm=llm,
         verbose=True,
         allow_delegation=False,
+        max_iter=1,
+        max_rpm=10,
     )
