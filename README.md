@@ -1,6 +1,6 @@
 # Project Agent System — Odoo Multi-Agent AI Ecosystem
 
-**Version 2.0**
+**Version 2.0.1** (graceful degradation for free-tier LLM rate limits)
 **Author:** Denilson Fragoso Da Silva Santos
 **Institution:** Instituto Superior Técnico, University of Lisbon
 **Course:** MEIC — Mestrado em Engenharia Informática e de Computadores
@@ -12,7 +12,7 @@
 
 An AI multi-agent ecosystem integrated with Odoo 19 for project management. It provides a chatbot, dashboards, weekly automated reports, and role-based permissions for Managers and Team Members.
 
-The system uses CrewAI agents orchestrated through a FastAPI microservice, communicating with Odoo via XML-RPC. The default LLM is `groq/qwen/qwen3.8-27b`, with optional support for OpenAI and Anthropic models.
+The system uses CrewAI agents orchestrated through a FastAPI microservice, communicating with Odoo via XML-RPC. The default LLM is `groq/qwen/qwen3.8-27b` (`max_tokens=512`), with optional support for OpenAI and Anthropic models. When the LLM rate limit is hit, the orchestrator recovers the last executed tool output so idempotent write operations are never lost.
 
 ---
 
@@ -58,7 +58,8 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 - CrewAI 0.175.0
 - LangChain 0.3.27
 - LiteLLM 1.63.0
-- LLM: `groq/qwen/qwen3.8-27b` (default)
+- LLM: `groq/qwen/qwen3.8-27b` (default, `max_tokens=512`)
+- Agents: `max_iter=1` + `max_rpm=10` per agent (avoids retry storms on rate limits)
 - Chart.js
 - ReportLab
 
@@ -269,10 +270,32 @@ Files:
 ## Known Limitations
 
 - ITOI validator and templating engine accept different syntactic profiles.
-- Groq rate limit: 1000 OTPM; wait 60s and retry.
+- Groq rate limit: 1000 OTPM (output), 7000 ITPM (input) on free tier. The orchestrator handles this gracefully: write intents get a single attempt (the tool already executed, retries waste tokens), and any rate-limit exception returns a friendly retry message instead of a raw traceback.
 - Odoo 19 `ir.cron` removed `numbercall` and `doall`.
 - `project.task.user_id` does not exist; use `user_ids` or `create_uid`.
 - ReportLab `Bullet` style name conflict; use unique names.
+
+---
+
+## Graceful Degradation
+
+The orchestrator implements a best-effort fallback strategy for LLM failures
+(rate limits, empty responses, network errors) that is critical on Groq's
+free tier:
+
+- **Write intents** (`create`, `add`, `delete`, `move`, `update`) execute
+  exactly **one attempt**. The tools are idempotent, so re-running them
+  would waste input tokens without changing the outcome.
+- **On rate limit or empty response**, the orchestrator extracts the last
+  tool output from the partially executed Crew and returns it to the user.
+  A write that reached the database is therefore never reported as failed.
+- **If no tool output is available**, the user gets a friendly message
+  (`"Rate limit reached on Groq free tier. Please retry in 60 seconds."`)
+  instead of a Python traceback.
+
+This behaviour was validated end-to-end: a `create_project` call that hit
+`ITPM 7000` still persisted the project in Odoo (id 18), and the user
+received a clear retry hint rather than a stack trace.
 
 ---
 
