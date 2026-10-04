@@ -226,7 +226,7 @@ def create_project(name: str, tasks: str = "") -> str:
             if not _find_task(proj_id, tname):
                 try:
                     _call('project.task', 'create', [{
-                        'name': tname, 'project_id': proj_id,
+                        'name': tname, 'project_id': proj_id, 'stage_id': False,
                     }])
                 except Exception:
                     pass
@@ -247,7 +247,7 @@ def add_task(project_name: str, task_name: str) -> str:
     if not task_id:
         try:
             task_id = _call('project.task', 'create', [{
-                'name': task_name, 'project_id': proj_id,
+                'name': task_name, 'project_id': proj_id, 'stage_id': False,
             }])
         except Exception as e:
             return f"ERROR: Failed to create task '{task_name}': {e}"
