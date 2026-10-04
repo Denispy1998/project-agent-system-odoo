@@ -16,7 +16,7 @@ from tools.odoo_tools import (
     list_projects, list_tasks, list_stages,
     analyze_risks, prioritize_tasks, project_summary,
     create_project, add_task, create_stage,
-    move_single_task,
+    move_single_task, move_all_tasks,
     delete_task, delete_stage, delete_project,
 )
 
@@ -84,6 +84,13 @@ PATTERNS = [
      lambda m: create_stage.func(
          project_name=_clean_name(m.group(5)),
          stage_name=_clean_name(m.group(3)))),
+
+    # move_all_tasks (batch) — ANTES do move_single_task
+    (re.compile(r"^\s*move\s+all\s+tasks?\s+to\s+stage\s+[\"']?(.+?)[\"']?\s+"
+                r"in\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: move_all_tasks.func(
+         project_name=_clean_name(m.group(2)),
+         target_stage_name=_clean_name(m.group(1)))),
 
     # move_single_task
     (re.compile(r"^\s*move\s+(the\s+)?task\s+[\"']?(.+?)[\"']?\s+"

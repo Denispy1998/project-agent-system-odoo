@@ -353,11 +353,28 @@ def delete_stage(project_name: str, stage_name: str) -> str:
     if not stage_id:
         return (f"Stage '{stage_name}' is no longer present in project "
                 f"'{project_name}'. Action complete. Do NOT retry.")
-    in_use = _call('project.task', 'search_count', [[('stage_id', '=', stage_id)]])
+    # Count tasks of THIS project using the stage
+    in_use = _call('project.task', 'search_count',
+                   [[('stage_id', '=', stage_id), ('project_id', '=', proj_id)]])
     if in_use:
         return (f"ERROR: Cannot delete stage '{stage_name}' — it has {in_use} "
-                f"task(s) assigned. Move or delete them first.")
-    _call('project.task.type', 'unlink', [[stage_id]])
+                f"task(s) assigned in this project. Move or delete them first.")
+
+    # Remove the stage from THIS project only (M2M unlink, not record delete)
+    _call('project.task.type', 'write', [[stage_id], {'project_ids': [(3, proj_id)]}])
+
+    # If the stage is no longer linked to ANY project AND has no tasks,
+    # it can be safely deleted
+    linked = _call('project.task.type', 'read', [[stage_id], ['project_ids']])
+    remaining = linked[0].get('project_ids', []) if linked else []
+    if not remaining:
+        any_task = _call('project.task', 'search_count', [[('stage_id', '=', stage_id)]])
+        if not any_task:
+            try:
+                _call('project.task.type', 'unlink', [[stage_id]])
+            except Exception:
+                pass  # Already unlinked from all projects, keep as orphan
+
     return (f"Stage '{stage_name}' is no longer present in project "
             f"'{project_name}'. Action complete. Do NOT retry.")
 
@@ -392,3 +409,20 @@ def debug_list_all_tasks(project_name: str) -> str:
         stage = t['stage_id'][1] if t['stage_id'] else 'No Stage'
         lines.append(f"  ID={t['id']} | name={repr(t['name'])} | stage={stage}")
     return "\n".join(lines)
+
+
+@tool("move_all_tasks")
+def move_all_tasks(project_name: str, target_stage_name: str) -> str:
+    """Move ALL tasks of a project to a target stage."""
+    proj_id = _find_project(project_name)
+    if not proj_id:
+        return f"ERROR: Project '{project_name}' not found."
+    stage_id = _find_stage(proj_id, target_stage_name)
+    if not stage_id:
+        return f"ERROR: Stage '{target_stage_name}' not found in project '{project_name}'."
+    task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
+    if not task_ids:
+        return f"No tasks in project '{project_name}'. Action complete. Do NOT retry."
+    _call('project.task', 'write', [task_ids, {'stage_id': stage_id}])
+    return (f"{len(task_ids)} task(s) moved to stage '{target_stage_name}' "
+            f"in project '{project_name}'. Action complete. Do NOT retry.")

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+from datetime import datetime, timedelta
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -71,13 +72,41 @@ def get_project_stats(project_id=None):
         except Exception as e:
             _logger.warning(f"User grouping failed: {e}")
 
+        # ---- Avg lead time (dias) — tasks concluídas com date_end ----
+        avg_lead_time = 0.0
+        try:
+            completed = Task.search([('date_end', '!=', False), ('name', '!=', False)])
+            if completed:
+                days = []
+                for t in completed:
+                    if t.create_date and t.date_end:
+                        d = (t.date_end - t.create_date).days
+                        if d >= 0:
+                            days.append(d)
+                if days:
+                    avg_lead_time = round(sum(days) / len(days), 1)
+        except Exception as e:
+            _logger.warning(f"Lead time calculation failed: {e}")
+
+        # ---- Throughput (tasks/dia) — tasks criadas nos últimos 7 dias / 7 ----
+        throughput = 0.0
+        try:
+            seven_days_ago = datetime.now() - timedelta(days=7)
+            recent = Task.search_count([
+                ('create_date', '>=', seven_days_ago),
+                ('name', '!=', False),
+            ])
+            throughput = round(recent / 7.0, 1)
+        except Exception as e:
+            _logger.warning(f"Throughput calculation failed: {e}")
+
         return {
             'total_projects': total_projects,
             'total_tasks': total_tasks,
             'stats_stages': stats_stages,
             'user_stats': user_stats,
-            'avg_lead_time': 0.0,
-            'throughput': 0.0,
+            'avg_lead_time': avg_lead_time,
+            'throughput': throughput,
         }
     except Exception as e:
         _logger.error(f"get_project_stats error: {e}")
