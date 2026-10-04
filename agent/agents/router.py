@@ -58,7 +58,7 @@ PATTERNS = [
     # prioritize_tasks
     (re.compile(r"^\s*prioriti[sz]e\s+(the\s+)?tasks?\s+(in|of|for)\s+"
                 r"(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
-     lambda m: prioritize_tasks.func(project_name=_clean_name(m.group(4)))),
+     lambda m: prioritize_tasks.func(project_name=_clean_name(m.group(3)))),
 
     # project_summary
     (re.compile(r"^\s*(summary|status|overview)\s+(of|for|in)\s+"
