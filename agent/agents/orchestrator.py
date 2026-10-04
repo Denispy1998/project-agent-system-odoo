@@ -11,6 +11,7 @@ from agents.project_manager_agent import get_project_manager_agent
 from agents.team_member_agent import get_team_member_agent
 from agents.reporting_agent import get_reporting_agent
 from agents.diagram_agent import get_diagram_agent
+from agents.router import try_route
 
 load_dotenv('/home/denispy/project-agent-system/.env')
 
@@ -133,6 +134,13 @@ def run_orchestrator(
     wait_seconds = 65
 
     crew = None
+
+    # === HYBRID ROUTER: try local regex first (no LLM, no rate limit) ===
+    if not deep_thinking:
+        local_result = try_route(user_message)
+        if local_result is not None:
+            print("[Orchestrator] Routed locally (no LLM call)")
+            return local_result
 
     for attempt in range(1, max_attempts + 1):
         try:

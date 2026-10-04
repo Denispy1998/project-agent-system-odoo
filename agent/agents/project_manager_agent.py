@@ -7,7 +7,6 @@ from tools.odoo_tools import (
     create_project, add_task, create_stage,
     move_single_task, move_tasks,
     delete_task, delete_stage, delete_project,
-    debug_list_all_tasks,
 )
 
 
@@ -35,7 +34,6 @@ def get_project_manager_agent(llm) -> Agent:
             create_project, add_task, create_stage,
             move_single_task, move_tasks,
             delete_task, delete_stage, delete_project,
-            debug_list_all_tasks,
         ],
         llm=llm,
         verbose=True,
