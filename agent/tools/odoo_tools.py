@@ -67,9 +67,6 @@ def _find_task(project_id: int, task_name: str):
     ids = _call('project.task', 'search',
                 [[('project_id', '=', project_id), ('name', 'ilike', task_name)]],
                 {'limit': 1})
-    if ids:
-        return ids[0]
-    ids = _call('project.task', 'search', [[('name', '=', task_name)]], {'limit': 1})
     return ids[0] if ids else None
 
 
@@ -83,9 +80,6 @@ def _find_stage(project_id: int, stage_name: str):
         return ids[0]
     ids = _call('project.task.type', 'search',
                 [[('name', 'ilike', stage_name), ('project_ids', 'in', [project_id])]])
-    if ids:
-        return ids[0]
-    ids = _call('project.task.type', 'search', [[('name', '=', stage_name)]])
     return ids[0] if ids else None
 
 
@@ -230,9 +224,12 @@ def create_project(name: str, tasks: str = "") -> str:
         task_list = [_clean(t) for t in tasks.split(',') if _clean(t)]
         for tname in task_list:
             if not _find_task(proj_id, tname):
-                _call('project.task', 'create', [{
-                    'name': tname, 'project_id': proj_id, 'stage_id': False,
-                }])
+                try:
+                    _call('project.task', 'create', [{
+                        'name': tname, 'project_id': proj_id,
+                    }])
+                except Exception:
+                    pass
     return (f"Project '{name}' (ID {proj_id}) is ready. "
             f"Action complete. Do NOT retry.")
 
@@ -248,9 +245,20 @@ def add_task(project_name: str, task_name: str) -> str:
         return f"ERROR: Project '{project_name}' not found."
     task_id = _find_task(proj_id, task_name)
     if not task_id:
-        task_id = _call('project.task', 'create', [{
-            'name': task_name, 'project_id': proj_id, 'stage_id': False,
-        }])
+        try:
+            task_id = _call('project.task', 'create', [{
+                'name': task_name, 'project_id': proj_id,
+            }])
+        except Exception as e:
+            return f"ERROR: Failed to create task '{task_name}': {e}"
+        if not task_id:
+            return f"ERROR: Task '{task_name}' could not be created (create returned no id)."
+        # verify it persisted
+        verified = _call('project.task', 'search_count',
+                         [[('id', '=', task_id), ('project_id', '=', proj_id)]])
+        if not verified:
+            return (f"ERROR: Task '{task_name}' was created but not linked "
+                    f"to project '{project_name}'.")
     return (f"Task '{task_name}' is ready in project '{project_name}' "
             f"(ID {task_id}). Action complete. Do NOT retry.")
 

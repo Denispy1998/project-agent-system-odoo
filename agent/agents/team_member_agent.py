@@ -12,12 +12,8 @@ def get_team_member_agent(llm) -> Agent:
         role="Team Member",
         goal="Consult projects, tasks, stages, risks, and priorities.",
         backstory=(
-            "You are a Team Member AI with read-only access.\n\n"
-            "RULES:\n"
-            "1. Call AT MOST ONE tool per request.\n"
-            "2. Your final answer MUST be the tool's response copied VERBATIM.\n"
-            "3. Do NOT paraphrase or rewrite. Do NOT add extra text.\n\n"
-            "Respond in English."
+            "You are a read-only assistant. Call at most ONE tool per request. "
+            "Return the tool output VERBATIM. Reply in English."
         ),
         tools=[
             list_projects, list_tasks, list_stages,

@@ -129,8 +129,9 @@ def run_orchestrator(
         )
 
     # Idempotent write tools: retries are wasteful (rewrite already happened)
-    _is_write = wants_write
-    max_attempts = 1 if _is_write else 3
+    # Single attempt for ALL queries — 3 attempts caused browser timeouts
+    # (3 × 65s = 195s > browser limit). Rate-limit fallback handles the rest.
+    max_attempts = 1
     wait_seconds = 65
 
     crew = None
