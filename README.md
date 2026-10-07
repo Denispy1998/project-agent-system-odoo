@@ -256,14 +256,18 @@ Recipient and sender are stored via `ir.config_parameter`.
 ## RSL/ASL Specifications
 
 Located in `docs/specs/`.
-Validated in ITLingoCloud with **0 errors**.
+Validated in ITLingoCloud with **0 errors**, following the structure of the
+BillingSystem case study provided by Prof. Alberto Rodrigues da Silva.
 
 Files:
 
-- `ProjectManagementAI-RSL-Domain.rsl`
-- `ProjectManagementAI-ASL-Final.asl`
-- `ProjectManagementAI-CaseStudy-Definition-v1.0.pdf`
-- `diagrams/` (use-case, domain models)
+- `AIProjectManagementAI-RSL.rsl` — Requirements Specification (v2.0)
+- `AIProjectManagementAI-ASL.asl` — Application Specification (v2.0)
+- `ProjectManagementAI-CaseStudy-Definition-v1.0.{md,pdf}` — informal case study
+- `diagrams/` — 3 SVGs (use-case + 2 domain models)
+
+Model coverage: Person, Project, PersonProject, ProjectStage, Task,
+ChatFolder, ChatSession, StreamChat, AgentTemplate, AgentInstance, AgentTask.
 
 ---
 
