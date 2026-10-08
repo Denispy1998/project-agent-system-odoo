@@ -8,7 +8,6 @@ from io import StringIO, BytesIO
 from datetime import datetime
 from odoo import http
 from odoo.http import request, Response
-from functools import lru_cache
 import requests
 
 AGENT_API_URL = "http://127.0.0.1:8001/agent/run"
@@ -48,34 +47,45 @@ def call_agent_api(message, user_id, is_manager, model_name="groq"):
         return f"Agent error: {e}"
 
 
+_ROLE_CACHE = {}          # {user_id: (expires_at_timestamp, bool)}
+_ROLE_CACHE_TTL = 60      # seconds
+
+
 def _is_user_manager(user_id):
     """Check if user is a Manager.
 
     Uses sudo() for the group lookups so record rules on res.groups
-    (which can hide groups from the user being checked) do not
-    interfere. The check itself needs elevation; the result
-    (does THIS user have THIS group) is role-independent.
+    (which can hide groups from the user being checked) do not interfere.
 
-    NOTE: no @lru_cache — a role change must be reflected immediately.
+    Results are cached for 60 seconds (module-level TTL, not @lru_cache)
+    so a role change propagates within a minute without a worker restart.
     """
+    now = time.time()
+    cached = _ROLE_CACHE.get(user_id)
+    if cached and cached[0] > now:
+        return cached[1]
+
     try:
         user = request.env['res.users'].sudo().browse(user_id)
         if not user.exists():
-            return False
-        if user.login == 'admin' or user.has_group('base.group_system'):
-            return True
-        grp = request.env['res.groups'].sudo().search(
-            [('name', '=', 'Gestor de Projeto')], limit=1)
-        if grp and grp.id in user.group_ids.ids:
-            return True
-        grp2 = request.env.ref(
-            'meu_assistente_ia.group_gestor_projeto',
-            raise_if_not_found=False)
-        if grp2 and grp2.id in user.group_ids.ids:
-            return True
-        return False
+            result = False
+        elif user.login == 'admin' or user.has_group('base.group_system'):
+            result = True
+        else:
+            grp = request.env['res.groups'].sudo().search(
+                [('name', '=', 'Gestor de Projeto')], limit=1)
+            grp2 = request.env.ref(
+                'meu_assistente_ia.group_gestor_projeto',
+                raise_if_not_found=False)
+            result = bool(
+                (grp and grp.id in user.group_ids.ids) or
+                (grp2 and grp2.id in user.group_ids.ids)
+            )
     except Exception:
-        return False
+        result = False
+
+    _ROLE_CACHE[user_id] = (now + _ROLE_CACHE_TTL, result)
+    return result
 
 
 SHARED_CSS = """
