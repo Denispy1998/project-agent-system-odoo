@@ -1,6 +1,6 @@
 # Project Agent System — Odoo Multi-Agent AI Ecosystem
 
-**Version 2.0.1** (graceful degradation for free-tier LLM rate limits)
+**Version 2.2** (hybrid router + dynamic diagrams + task_status)
 **Author:** Denilson Fragoso Da Silva Santos
 **Institution:** Instituto Superior Técnico, University of Lisbon
 **Course:** MEIC — Mestrado em Engenharia Informática e de Computadores
@@ -36,6 +36,18 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 
 ## Features
 
+- **Hybrid Router**: local regex classifier handles ~90% of commands in
+  under 0.5 s, with zero LLM calls and zero rate-limit consumption;
+  unknown intents fall back to CrewAI → LLM
+- **Dynamic Mermaid diagrams**: the LLM generates the diagram body
+  (flowchart, sequence, ER, class, state, Gantt, pie) with a weighted
+  keyword classifier for kind detection and a deterministic fallback
+  on LLM failure
+- **Task lifecycle**: `project.task.task_status` (In Backlog / In Progress /
+  Concluded); setting it to *Concluded* auto-fills `date_end`, reverting
+  clears it
+- **Dashboard KPIs**: Lead Time (avg days for concluded tasks) and
+  Activity (tasks updated in the last 7 days)
 - Multi-session chat with context (`ai.session`)
 - Model selector (Groq, optional OpenAI/Anthropic)
 - Role-based permissions: **Manager** (read/write) vs **Team Member** (read-only)
@@ -57,7 +69,7 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 - FastAPI + Uvicorn
 - CrewAI 0.175.0
 - LangChain 0.3.27
-- LiteLLM 1.63.0
+- LiteLLM 1.74.9
 - LLM: `groq/qwen/qwen3.8-27b` (default, `max_tokens=512`)
 - Agents: `max_iter=1` + `max_rpm=10` per agent (avoids retry storms on rate limits)
 - Chart.js
