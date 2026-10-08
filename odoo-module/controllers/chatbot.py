@@ -253,6 +253,16 @@ SHARED_CSS = """
     }
     .site-footer strong { color: #714B67; }
     .site-footer i { color: #714B67; margin-right: 4px; }
+
+    .status-btn {
+        display: inline-block; padding: 4px 12px; border-radius: 12px;
+        text-decoration: none; font-size: 0.78rem; font-weight: 600;
+        transition: all 0.2s ease; cursor: pointer;
+    }
+    .status-btn:hover { transform: scale(1.06); }
+    .status-btn.status-in_backlog  { background: #e5e7eb; color: #374151; }
+    .status-btn.status-in_progress { background: #fef3c7; color: #92400e; }
+    .status-btn.status-concluded   { background: #d1fae5; color: #065f46; }
 </style>
 """
 
@@ -1184,9 +1194,16 @@ class ChatbotController(http.Controller):
         assignee_data = json.dumps(list(assignee_counts.values()))
 
         rows = ''.join(
-            f'<tr><td><strong>{t["name"]}</strong></td><td>{t["stage"]}</td><td>{t["assignee"]}</td><td>{t["create_date"]}</td></tr>'
+            f'<tr><td><strong>{t["name"]}</strong></td>'
+            f'<td>{t["stage"]}</td>'
+            f'<td>{t["assignee"]}</td>'
+            f'<td>{t["create_date"]}</td>'
+            f'<td><a class="status-btn status-{t.get("task_status","in_backlog")}" '
+            f'href="/assistente/task/{t["id"]}/cycle" '
+            f'title="Click to advance to the next status">'
+            f'{t.get("task_status_label","In Backlog")}</a></td></tr>'
             for t in tasks
-        ) or '<tr><td colspan="4" style="text-align:center;color:#9ca3af;">No tasks</td></tr>'
+        ) or '<tr><td colspan="5" style="text-align:center;color:#9ca3af;">No tasks</td></tr>'
 
         content = f"""
         <div class="container" style="padding-top: 80px;">
@@ -1214,7 +1231,7 @@ class ChatbotController(http.Controller):
                 <h3><i class="fas fa-list-check"></i> Task List</h3>
                 <table class="data-table">
                     <thead>
-                        <tr><th>Name</th><th>Stage</th><th>Assignee</th><th>Created</th></tr>
+                        <tr><th>Name</th><th>Stage</th><th>Assignee</th><th>Created</th><th>Status</th></tr>
                     </thead>
                     <tbody>{rows}</tbody>
                 </table>
@@ -1255,6 +1272,31 @@ class ChatbotController(http.Controller):
     # -------------------------------------------------------------------------
     # PDF
     # -------------------------------------------------------------------------
+    @http.route('/assistente/task/<int:task_id>/cycle', type='http', auth='user', website=True)
+    def task_status_cycle(self, task_id):
+        """Cycle task_status: in_backlog -> in_progress -> concluded -> in_backlog.
+
+        Requires Manager role. Redirects back to the project page."""
+        user = request.env.user
+        task = request.env['project.task'].browse(task_id)
+        if not task.exists():
+            return request.redirect('/assistente/projetos')
+        project_id = task.project_id.id or 0
+        if not _is_user_manager(user.id):
+            _logger.warning(f"User {user.login} DENIED cycle on task {task_id}")
+            return request.redirect(f'/assistente/projeto/{project_id}')
+        cycle = {'in_backlog': 'in_progress',
+                 'in_progress': 'concluded',
+                 'concluded': 'in_backlog'}
+        new_status = cycle.get(task.task_status or 'in_backlog', 'in_progress')
+        # Authorisation already validated above via _is_user_manager();
+        # sudo() bypasses the base project ACL (project.group_project_manager)
+        # that our custom Gestor de Projeto group does not imply.
+        task.sudo().write({'task_status': new_status})
+        request.env.cr.commit()
+        _logger.info(f"Task {task_id} cycled to {new_status} by {user.login}")
+        return request.redirect(f'/assistente/projeto/{project_id}')
+
     @http.route('/assistente/relatorio/<int:projeto_id>', type='http', auth='user', website=True)
     def relatorio_pdf(self, projeto_id):
         pdf = _generate_pdf(projeto_id)

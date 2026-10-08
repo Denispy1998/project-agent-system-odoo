@@ -40,11 +40,17 @@ def get_project_stats(project_id=None):
             for t in tasks:
                 stage_name = t.stage_id.name if t.stage_id else 'No Stage'
                 assignee = t.create_uid.name if t.create_uid else 'Unassigned'
+                status_label = dict(
+                    t._fields['task_status'].selection
+                ).get(t.task_status or 'in_backlog', 'In Backlog')
                 task_list.append({
+                    'id': t.id,
                     'name': t.name,
                     'stage': stage_name,
                     'assignee': assignee,
                     'create_date': t.create_date.strftime('%d/%m/%Y') if t.create_date else '-',
+                    'task_status': t.task_status or 'in_backlog',
+                    'task_status_label': status_label,
                 })
             return {
                 'project_name': project.name,
