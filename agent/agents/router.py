@@ -18,6 +18,7 @@ from tools.odoo_tools import (
     create_project, add_task, create_stage,
     move_single_task, move_all_tasks,
     delete_task, delete_stage, delete_project,
+    set_task_status,
 )
 
 # ---------------------------------------------------------------------------
@@ -95,6 +96,24 @@ PATTERNS = [
      lambda m: move_all_tasks.func(
          project_name=_clean_name(m.group(2)),
          target_stage_name=_clean_name(m.group(1)))),
+
+    # set_task_status — "set task X in Y to <status>"
+    (re.compile(r"^\s*set\s+task\s+[\"']?(.+?)[\"']?\s+(in|of|from)\s+"
+                r"(?:project\s+)?[\"']?(.+?)[\"']?\s+to\s+"
+                r"[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: set_task_status.func(
+         project_name=_clean_name(m.group(3)),
+         task_name=_clean_name(m.group(1)),
+         new_status=_clean_name(m.group(4)))),
+
+    # set_task_status — "mark task X as <status> in Y"
+    (re.compile(r"^\s*mark\s+task\s+[\"']?(.+?)[\"']?\s+as\s+"
+                r"[\"']?(.+?)[\"']?\s+(in|of|from)\s+"
+                r"(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: set_task_status.func(
+         project_name=_clean_name(m.group(4)),
+         task_name=_clean_name(m.group(1)),
+         new_status=_clean_name(m.group(2)))),
 
     # move_single_task
     (re.compile(r"^\s*move\s+(the\s+)?task\s+[\"']?(.+?)[\"']?\s+"

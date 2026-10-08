@@ -435,3 +435,70 @@ def move_all_tasks(project_name: str, target_stage_name: str) -> str:
     _call('project.task', 'write', [task_ids, {'stage_id': stage_id}])
     return (f"{len(task_ids)} task(s) moved to stage '{target_stage_name}' "
             f"in project '{project_name}'. Action complete. Do NOT retry.")
+
+
+# =============================================================================
+# STATUS TOOLS
+# =============================================================================
+
+# Natural-language synonyms → canonical task_status values
+_STATUS_SYNONYMS = {
+    # in_backlog
+    "in_backlog": "in_backlog",
+    "inbacklog":  "in_backlog",
+    "backlog":    "in_backlog",
+    "todo":       "in_backlog",
+    "to_do":      "in_backlog",
+    "not_started": "in_backlog",
+    # in_progress
+    "in_progress": "in_progress",
+    "inprogress":  "in_progress",
+    "in-progress": "in_progress",
+    "progress":    "in_progress",
+    "doing":       "in_progress",
+    "wip":         "in_progress",
+    "working":     "in_progress",
+    # concluded
+    "concluded":  "concluded",
+    "done":       "concluded",
+    "complete":   "concluded",
+    "completed":  "concluded",
+    "finished":   "concluded",
+    "closed":     "concluded",
+}
+
+
+def _normalize_status(raw: str):
+    """Map a natural-language status string to a canonical task_status value."""
+    if not raw:
+        return None
+    s = _clean(raw).lower().strip().replace(" ", "_")
+    return _STATUS_SYNONYMS.get(s)
+
+
+@tool("set_task_status")
+def set_task_status(project_name: str, task_name: str, new_status: str) -> str:
+    """Change the lifecycle status of a task: in_backlog, in_progress, or concluded.
+
+    Accepts synonyms: 'done'/'completed'/'finished' → concluded;
+    'doing'/'working'/'wip' → in_progress; 'todo'/'backlog' → in_backlog.
+
+    The Odoo model auto-fills date_end when the status becomes concluded
+    and clears it when it moves back to in_backlog or in_progress.
+    """
+    normalized = _normalize_status(new_status)
+    if not normalized:
+        return (f"ERROR: Invalid status '{new_status}'. "
+                f"Use one of: in_backlog, in_progress, concluded.")
+
+    proj_id = _find_project(project_name)
+    if not proj_id:
+        return f"ERROR: Project '{project_name}' not found."
+
+    task_id = _find_task(proj_id, task_name)
+    if not task_id:
+        return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
+
+    _call('project.task', 'write', [[task_id], {'task_status': normalized}])
+    return (f"Task '{task_name}' status is now '{normalized}'. "
+            f"Action complete. Do NOT retry.")
