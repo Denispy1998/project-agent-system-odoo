@@ -140,11 +140,16 @@ def run_orchestrator(
             "list tasks, analyze risks, prioritize work, or generate summaries."
         )
 
-    # Idempotent write tools: retries are wasteful (rewrite already happened)
-    # Single attempt for ALL queries — 3 attempts caused browser timeouts
-    # (3 × 65s = 195s > browser limit). Rate-limit fallback handles the rest.
-    max_attempts = 1
-    wait_seconds = 65
+    # Retry strategy: 3 attempts with exponential backoff.
+    #   1st attempt: no wait
+    #   2nd attempt: wait 30s
+    #   3rd attempt: wait 60s
+    # Worst case wall time ≈ 90s + LLM latency, well under the browser's
+    # 180s timeout (the previous "3 × 65s" config exceeded it).
+    # The router local + diagram shortcut absorb ~90% of traffic, so this
+    # only fires on genuine LLM fallbacks.
+    max_attempts = 3
+    backoff_schedule = [30, 60, 120]
 
     crew = None
 
@@ -203,14 +208,17 @@ def run_orchestrator(
                 return recovered
 
             if is_rate_limit and attempt < max_attempts:
-                print(f"[Orchestrator] Rate limit hit. Waiting {wait_seconds}s "
+                wait = backoff_schedule[attempt - 1]
+                print(f"[Orchestrator] Rate limit hit. Waiting {wait}s "
                       f"before retry ({attempt}/{max_attempts})...")
-                time.sleep(wait_seconds)
+                time.sleep(wait)
                 continue
 
             if is_rate_limit:
-                return ("Rate limit reached on Groq free tier. "
-                        "Please retry in 60 seconds.")
+                total_wait = sum(backoff_schedule[:max_attempts - 1])
+                return (f"Rate limit reached on Groq free tier after "
+                        f"{max_attempts} attempts (~{total_wait}s total). "
+                        f"Please retry in 60 seconds.")
 
             if is_empty:
                 return ("LLM returned an empty response. "
