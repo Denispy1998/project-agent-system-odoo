@@ -1,6 +1,6 @@
 # Project Agent System — Odoo Multi-Agent AI Ecosystem
 
-**Version 2.2** (hybrid router + dynamic diagrams + task_status)
+**Version 2.4** (RBAC + task lifecycle + dynamic diagrams)
 **Author:** Denilson Fragoso Da Silva Santos
 **Institution:** Instituto Superior Técnico, University of Lisbon
 **Course:** MEIC — Mestrado em Engenharia Informática e de Computadores
@@ -43,9 +43,17 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
   (flowchart, sequence, ER, class, state, Gantt, pie) with a weighted
   keyword classifier for kind detection and a deterministic fallback
   on LLM failure
+- **Role-based access**: *Gestor de Projeto* (RW) vs *Membro de Equipa*
+  (R-only) enforced both at the Odoo `ir.model.access` layer and at the
+  chat orchestrator level
 - **Task lifecycle**: `project.task.task_status` (In Backlog / In Progress /
   Concluded); setting it to *Concluded* auto-fills `date_end`, reverting
-  clears it
+  clears it. Editable via:
+  * Odoo form (radio widget, tracks changes in the chatter)
+  * Chat: `set task <name> in <project> to <status>`
+- **17 idempotent tools** (was 14), including `set_task_status` with
+  natural-language synonyms (done/finished → concluded, doing/wip →
+  in_progress, todo/backlog → in_backlog)
 - **Dashboard KPIs**: Lead Time (avg days for concluded tasks) and
   Activity (tasks updated in the last 7 days)
 - Multi-session chat with context (`ai.session`)
@@ -54,7 +62,7 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 - Global dashboard with Chart.js and per-project sub-dashboards
 - PDF report with branding and risk analysis
 - CSV export (semicolon separator `;`)
-- 14 idempotent tools (read + write)
+- 17 idempotent tools (read + write)
 - Weekly AI Ecosystem Report via cron and SMTP
 - Copyright footer on all pages
 - Multi-language ready (English labels)
