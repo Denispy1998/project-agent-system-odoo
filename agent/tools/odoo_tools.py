@@ -419,22 +419,6 @@ def delete_project(project_name: str) -> str:
             f"Action complete. Do NOT retry.")
 
 
-@tool("debug_list_all_tasks")
-def debug_list_all_tasks(project_name: str) -> str:
-    """DEBUG: list every task in a project with exact name and ID."""
-    proj_id = _find_project(project_name)
-    if not proj_id:
-        return f"ERROR: Project '{project_name}' not found."
-    task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
-    if not task_ids:
-        return f"INFO: Project '{project_name}' has no tasks."
-    tasks = _call('project.task', 'read', [task_ids], {'fields': ['name', 'stage_id']})
-    lines = [f"DEBUG — Tasks of project ID {proj_id} ('{project_name}'):"]
-    for t in tasks:
-        stage = t['stage_id'][1] if t['stage_id'] else 'No Stage'
-        lines.append(f"  ID={t['id']} | name={repr(t['name'])} | stage={stage}")
-    return "\n".join(lines)
-
 
 @tool("move_all_tasks")
 def move_all_tasks(project_name: str, target_stage_name: str) -> str:

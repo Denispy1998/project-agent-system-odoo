@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Project Task — Form: add task_status field (editable radio)
+         Inherits project.view_task_form2 (Odoo 19)
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_task_form_inherit_task_status" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.task.status</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group name="task_status_group" string="Lifecycle">
+                    <field name="task_status"
+                           widget="radio"
+                           options="{'horizontal': true}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Project Task — List: add task_status column (read-only badge)
+         Inherits project.view_task_tree2 (Odoo 19)
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_task_tree_inherit_task_status" model="ir.ui.view">
+        <field name="name">project.task.tree.inherit.task.status</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='stage_id']" position="after">
+                <field name="task_status"
+                       widget="badge"
+                       decoration-muted="task_status == 'in_backlog'"
+                       decoration-warning="task_status == 'in_progress'"
+                       decoration-success="task_status == 'concluded'"
+                       optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Project Task — Search: add task_status filters
+         Inherits project.view_task_search_form (Odoo 19)
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_task_search_inherit_task_status" model="ir.ui.view">
+        <field name="name">project.task.search.inherit.task.status</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_search_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="task_status_backlog"
+                        string="In Backlog"
+                        domain="[('task_status', '=', 'in_backlog')]"/>
+                <filter name="task_status_in_progress"
+                        string="In Progress"
+                        domain="[('task_status', '=', 'in_progress')]"/>
+                <filter name="task_status_concluded"
+                        string="Concluded"
+                        domain="[('task_status', '=', 'concluded')]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

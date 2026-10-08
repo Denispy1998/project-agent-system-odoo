@@ -7,11 +7,27 @@ _logger = logging.getLogger(__name__)
 
 
 def get_project_stats(project_id=None):
-    """Return statistics for the dashboard. Safe: never raises."""
+    """Return statistics for the dashboard. Safe: never raises.
+
+    Global KPIs (project_id is None) are computed with sudo() so every
+    user — Manager or Team Member — sees the same ecosystem-wide numbers.
+    Odoo's record rules on project.task (see 'employees: follow required
+    for follower-only projects') would otherwise filter tasks by ownership
+    and make the dashboard inconsistent across roles.
+
+    Project-specific stats keep the current user's env so existing access
+    rules on a single project continue to be respected.
+    """
     try:
         env = request.env
-        Project = env['project.project']
-        Task = env['project.task']
+        # Global dashboard → sudo (ecosystem-wide metrics)
+        # Project dashboard → current user (respects project access rules)
+        if project_id:
+            Project = env['project.project']
+            Task = env['project.task']
+        else:
+            Project = env['project.project'].sudo()
+            Task = env['project.task'].sudo()
 
         # ---- Project-specific stats ----
         if project_id:

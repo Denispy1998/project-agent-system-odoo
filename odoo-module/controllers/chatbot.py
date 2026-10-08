@@ -48,32 +48,34 @@ def call_agent_api(message, user_id, is_manager, model_name="groq"):
         return f"Agent error: {e}"
 
 
-@lru_cache(maxsize=128)
 def _is_user_manager(user_id):
+    """Check if user is a Manager.
+
+    Uses sudo() for the group lookups so record rules on res.groups
+    (which can hide groups from the user being checked) do not
+    interfere. The check itself needs elevation; the result
+    (does THIS user have THIS group) is role-independent.
+
+    NOTE: no @lru_cache — a role change must be reflected immediately.
+    """
     try:
-        user = request.env['res.users'].browse(user_id)
+        user = request.env['res.users'].sudo().browse(user_id)
         if not user.exists():
             return False
         if user.login == 'admin' or user.has_group('base.group_system'):
             return True
-        grp = request.env['res.groups'].search([('name', '=', 'Gestor de Projeto')], limit=1)
-        if grp and grp.id in user.groups_id.ids:
+        grp = request.env['res.groups'].sudo().search(
+            [('name', '=', 'Gestor de Projeto')], limit=1)
+        if grp and grp.id in user.group_ids.ids:
             return True
-        try:
-            grp2 = request.env.ref('meu_assistente_ia.group_project_manager', raise_if_not_found=False)
-            if grp2 and grp2.id in user.groups_id.ids:
-                return True
-        except Exception:
-            pass
+        grp2 = request.env.ref(
+            'meu_assistente_ia.group_gestor_projeto',
+            raise_if_not_found=False)
+        if grp2 and grp2.id in user.group_ids.ids:
+            return True
         return False
     except Exception:
         return False
-
-
-def _get_user_role_label(user):
-    if _is_user_manager(user.id):
-        return 'Manager'
-    return 'Team Member'
 
 
 SHARED_CSS = """
