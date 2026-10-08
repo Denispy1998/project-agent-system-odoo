@@ -100,8 +100,25 @@ def list_projects() -> str:
 
 
 @tool("list_tasks")
-def list_tasks(project_name: str) -> str:
-    """List tasks of a project."""
+def list_tasks(project_name: str = "") -> str:
+    """List tasks of a project, or all tasks if project_name is empty."""
+    # No project → list ALL tasks
+    if not project_name or not project_name.strip():
+        task_ids = _call('project.task', 'search', [[]])
+        if not task_ids:
+            return "INFO: No tasks found."
+        tasks = _call('project.task', 'read', [task_ids],
+                      {'fields': ['name', 'stage_id', 'project_id']})
+        lines = [f"All tasks ({len(tasks)} total):"]
+        for t in tasks[:50]:
+            stage = "No Stage" if not t['stage_id'] else t['stage_id'][1]
+            proj = "No Project" if not t.get('project_id') else t['project_id'][1]
+            lines.append(f"  • {t['name']} (Project: {proj} | Stage: {stage})")
+        if len(tasks) > 50:
+            lines.append(f"  ... and {len(tasks) - 50} more")
+        return "\n".join(lines)
+
+    # Specific project
     proj_id = _find_project(project_name)
     if not proj_id:
         return f"ERROR: Project '{project_name}' not found."

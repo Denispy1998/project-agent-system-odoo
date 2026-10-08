@@ -40,7 +40,11 @@ PATTERNS = [
     (re.compile(r"^\s*(list|show|display)\s+(all\s+)?projects?\s*$", re.I),
      lambda m: list_projects.func()),
 
-    # list_tasks — various phrasings
+    # list_tasks — "list (all) tasks" (no project → all tasks)
+    (re.compile(r"^\s*(list|show|display)\s+(all\s+)?tasks?\s*$", re.I),
+     lambda m: list_tasks.func(project_name="")),
+
+    # list_tasks — "list tasks in/of/from <project>"
     (re.compile(r"^\s*(list|show|display)\s+(all\s+)?tasks?\s+(in|of|from)\s+"
                 r"(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
      lambda m: list_tasks.func(project_name=_clean_name(m.group(4)))),

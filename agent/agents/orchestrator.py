@@ -106,6 +106,19 @@ def _recover_tool_output(crew):
     return None
 
 
+_DIAGRAM_KEYWORDS = (
+    "diagram", "flowchart", "mermaid", "gantt",
+    "pie chart", "sequence chart", "er chart", "class chart",
+    "state chart",
+)
+
+
+def _detect_diagram_intent(msg: str) -> bool:
+    """True if the message asks for a diagram (shortcut before CrewAI)."""
+    m = msg.lower()
+    return any(k in m for k in _DIAGRAM_KEYWORDS)
+
+
 def run_orchestrator(
     user_message: str,
     user_id: Optional[int] = None,
@@ -140,6 +153,18 @@ def run_orchestrator(
     if local_result is not None:
         print("[Orchestrator] Routed locally (no LLM call)")
         return local_result
+
+    # === DIAGRAM SHORTCUT ===
+    # Call the tool directly instead of going through CrewAI:
+    #   - 1 LLM call instead of 2 (halves tokens, avoids rate limit)
+    #   - The deterministic fallback actually works when Groq is rate-limited
+    if _detect_diagram_intent(user_message):
+        try:
+            from tools.mermaid_tools import generate_mermaid_diagram
+            print("[Orchestrator] Diagram intent detected — direct tool call")
+            return generate_mermaid_diagram.func(description=user_message)
+        except Exception as e:
+            print(f"[Orchestrator] Diagram shortcut failed: {e}")
 
     for attempt in range(1, max_attempts + 1):
         try:
