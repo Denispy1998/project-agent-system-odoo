@@ -30,13 +30,12 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq", deep_thinking=False):
+def call_agent_api(message, user_id, is_manager, model_name="groq"):
     try:
         r = requests.post(
             AGENT_API_URL,
             json={"message": message, "user_id": user_id,
-                  "is_manager": is_manager, "model_name": model_name,
-                  "deep_thinking": bool(deep_thinking)},
+                  "is_manager": is_manager, "model_name": model_name},
             timeout=180,
         )
         r.raise_for_status()
@@ -677,9 +676,6 @@ class ChatbotController(http.Controller):
         .session-item .session-actions i { cursor: pointer; opacity: 0.5; font-size: 0.75rem; transition: opacity 0.15s; }
         .session-item .session-actions i:hover { opacity: 1; color: #fff; }
         .session-item .session-actions .fa-trash:hover { color: #ff6b6b; }
-        .deep-toggle { display: flex; align-items: center; gap: 6px; margin-left: 12px; padding: 6px 12px; border-radius: 8px; background: #f4f1f3; color: #714B67; font-size: 0.85rem; cursor: pointer; user-select: none; }
-        .deep-toggle input { cursor: pointer; }
-        .deep-toggle:hover { background: #ebe4ea; }
         .bubble .mermaid { background: #ffffff; border-radius: 8px; padding: 12px; margin: 8px 0; text-align: center; overflow-x: auto; border: 1px solid #e5e5e5; }
         .bubble .mermaid svg { max-width: 100%; height: auto; }
         .bubble.bubble-wide { max-width: 90%; min-width: 420px; }
@@ -716,10 +712,6 @@ class ChatbotController(http.Controller):
             <i class="fas fa-robot robot"></i>
             <h2 id="sessionTitle">AI Assistant</h2>
             """ + mode_badge + """
-            <label class="deep-toggle" title="Deep thinking: more reasoning steps for complex queries">
-                <input type="checkbox" id="deepThinking">
-                <i class="fas fa-brain"></i> Deep
-            </label>
             <select id="modelSelect" onchange="changeModel()">
                 <option value="groq">Groq · Qwen 3.8 27B</option>
                 <option value="openai">OpenAI · GPT-4o</option>
@@ -884,12 +876,10 @@ class ChatbotController(http.Controller):
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'user', content: text })
                 });
-                const deepCb = document.getElementById('deepThinking');
-                const deepValue = deepCb ? deepCb.checked : false;
                 const res = await fetch('/assistente/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId, deep_thinking: deepValue })
+                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId })
                 });
                 const data = await res.json();
                 const reply = data.resposta || data.erro || 'No response';
@@ -988,9 +978,7 @@ class ChatbotController(http.Controller):
             const chat = document.getElementById('chatMessages');
             const div = document.createElement('div');
             div.className = 'message bot';
-            const deepOn = document.getElementById('deepThinking');
-            const label = (deepOn && deepOn.checked) ? 'Thinking deeply…' : 'Thinking…';
-            div.innerHTML = '<div class="bubble typing">' + label + '</div>';
+            div.innerHTML = '<div class="bubble typing">Thinking…</div>';
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
             return div;
@@ -1026,7 +1014,6 @@ class ChatbotController(http.Controller):
             if not pergunta:
                 return Response(json.dumps({'erro': 'Empty message'}), status=400)
 
-            deep_thinking = bool(data.get('deep_thinking', False))
             user = request.env.user
             is_manager = _is_user_manager(user.id)
             model_name = "groq"
@@ -1035,9 +1022,9 @@ class ChatbotController(http.Controller):
                 if session.exists():
                     model_name = session.model_name or "groq"
 
-            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} deep: {deep_thinking}")
+            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, deep_thinking)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

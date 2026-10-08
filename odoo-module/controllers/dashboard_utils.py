@@ -72,10 +72,14 @@ def get_project_stats(project_id=None):
         except Exception as e:
             _logger.warning(f"User grouping failed: {e}")
 
-        # ---- Avg lead time (dias) — tasks concluídas com date_end ----
+        # ---- Lead Time (days) — avg(date_end - create_date) for concluded tasks ----
         avg_lead_time = 0.0
         try:
-            completed = Task.search([('date_end', '!=', False), ('name', '!=', False)])
+            completed = Task.search([
+                ('task_status', '=', 'concluded'),
+                ('date_end', '!=', False),
+                ('name', '!=', False),
+            ])
             if completed:
                 days = []
                 for t in completed:
@@ -88,17 +92,17 @@ def get_project_stats(project_id=None):
         except Exception as e:
             _logger.warning(f"Lead time calculation failed: {e}")
 
-        # ---- Throughput (tasks/dia) — tasks criadas nos últimos 7 dias / 7 ----
+        # ---- Activity (tasks/day) — tasks updated in the last 7 days / 7 ----
         throughput = 0.0
         try:
             seven_days_ago = datetime.now() - timedelta(days=7)
             recent = Task.search_count([
-                ('create_date', '>=', seven_days_ago),
+                ('write_date', '>=', seven_days_ago),
                 ('name', '!=', False),
             ])
             throughput = round(recent / 7.0, 1)
         except Exception as e:
-            _logger.warning(f"Throughput calculation failed: {e}")
+            _logger.warning(f"Activity calculation failed: {e}")
 
         return {
             'total_projects': total_projects,

@@ -111,7 +111,6 @@ def run_orchestrator(
     user_id: Optional[int] = None,
     is_manager: bool = False,
     model_name: str = "groq",
-    deep_thinking: bool = False,
 ) -> str:
     # === Permission guard: block write intents for team members ===
     write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit",
@@ -137,11 +136,10 @@ def run_orchestrator(
     crew = None
 
     # === HYBRID ROUTER: try local regex first (no LLM, no rate limit) ===
-    if not deep_thinking:
-        local_result = try_route(user_message)
-        if local_result is not None:
-            print("[Orchestrator] Routed locally (no LLM call)")
-            return local_result
+    local_result = try_route(user_message)
+    if local_result is not None:
+        print("[Orchestrator] Routed locally (no LLM call)")
+        return local_result
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -160,14 +158,6 @@ def run_orchestrator(
             else:
                 agent = get_team_member_agent(llm)
                 task_desc = user_message
-
-            if deep_thinking:
-                task_desc = (
-                    "THINK STEP-BY-STEP before answering. Take your time to reason about "
-                    "the problem, consider alternatives, and verify your plan. "
-                    "Then provide a clear, final answer.\n\n"
-                    f"User request: {task_desc}"
-                )
 
             task = Task(
                 description=task_desc,
