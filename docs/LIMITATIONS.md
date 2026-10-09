@@ -100,19 +100,14 @@ invalidation on `res.users` write (via `@api.depends` or a post-hook).
 
 ---
 
-## L4 — Filestore has orphan assets
+## L4 — Filestore: partially cleaned (v2.6.0)
 
-**Symptom:** `FileNotFoundError` for 3-4 attachment hashes in `~/odoo.log`.
+**Status (v2.6.0):** of the 18 `ir_attachment` records pointing at missing files, 12 were the regenerable asset bundles (ir.ui.view / res_id=0) and were safely unlinked via the ORM. The remaining 6 (5 web_icon_data + 1 res.company.scss) are preserved because:
+- The 5 icons are only needed if the menus lose their custom   images; Odoo falls back to defaults gracefully.
+- The scss is a custom theme snippet; keeping the record lets   it be recovered if a copy of the file surfaces later.
 
-**Cause:** the hardware crash wiped `~/.local/share/Odoo/filestore/odoo/`
-and the restore did not include every binary blob. The corresponding
-`ir.attachment` records still reference non-existent files.
+**Residual impact:** none. The 12 deletions removed 12 dead records. The 6 kept records will log `FileNotFoundError` only if the corresponding UI elements are opened; the fallback path is handled by Odoo.
 
-**Impact:** cosmetic — those specific attachments cannot be downloaded.
-No user-facing feature depends on them.
-
-**Fix if needed:** `-u web` regenerates CSS/JS assets; orphan attachment
-records can be unlinked from Odoo UI (Settings → Technical → Attachments).
 
 ---
 
