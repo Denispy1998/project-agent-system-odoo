@@ -502,3 +502,52 @@ def set_task_status(project_name: str, task_name: str, new_status: str) -> str:
     _call('project.task', 'write', [[task_id], {'task_status': normalized}])
     return (f"Task '{task_name}' status is now '{normalized}'. "
             f"Action complete. Do NOT retry.")
+
+
+
+# =============================================================================
+# SERVER-SIDE PERMISSION CHECK (v2.5)
+# =============================================================================
+# The FastAPI layer used to trust the is_manager flag sent by the client.
+# A direct POST to :8001 with is_manager=true would execute writes even
+# for a Team Member. These helpers verify the user role in Odoo via
+# XML-RPC before the orchestrator ever sees the request.
+
+_MANAGER_CACHE = {}
+_MANAGER_CACHE_TTL = 60
+
+
+def _user_is_manager_via_xmlrpc(user_id):
+    """Query Odoo for the actual group membership of user_id."""
+    if not user_id:
+        return False
+    try:
+        rows = _call("res.users", "read",
+                     [[user_id]],
+                     {"fields": ["login", "group_ids"]})
+        if not rows:
+            return False
+        user = rows[0]
+        if user.get("login") == "admin":
+            return True
+        grp_ids = _call("res.groups", "search",
+                        [[["name", "=", "Gestor de Projeto"]]],
+                        {"limit": 1})
+        if not grp_ids:
+            return False
+        return grp_ids[0] in (user.get("group_ids") or [])
+    except Exception as e:
+        print(f"[verify_manager] XML-RPC error for user_id={user_id}: {e}")
+        return False
+
+
+def verify_user_is_manager(user_id):
+    """Public, cached version. Falls back to False on any error."""
+    import time
+    now = time.time()
+    cached = _MANAGER_CACHE.get(user_id)
+    if cached and cached[0] > now:
+        return cached[1]
+    result = _user_is_manager_via_xmlrpc(user_id)
+    _MANAGER_CACHE[user_id] = (now + _MANAGER_CACHE_TTL, result)
+    return result

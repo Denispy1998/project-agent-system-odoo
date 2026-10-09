@@ -156,6 +156,37 @@ docs/LIMITATIONS.md (L1).
 
 ---
 
+## T9 — Client-claimed is_manager trusted at the API boundary
+
+**Symptom:** a Team Member could execute writes by POSTing directly to
+the FastAPI `/agent/run` endpoint with `is_manager: true` in the JSON
+payload. The chat UI already gated writes correctly, but the API was
+open to any client that could reach `127.0.0.1:8001`.
+
+**Root cause:** the Pydantic model trusted the flag and forwarded it to
+the orchestrator without verification:
+
+    class ChatRequest(BaseModel):
+        is_manager: bool = False  # client-supplied
+
+**Fix (v2.5):** add `verify_user_is_manager(user_id)` in
+`tools/odoo_tools.py`, using XML-RPC to query Odoo for real group
+membership. The FastAPI layer now ANDs the client flag with the server
+truth and downgrades if they disagree. Result cached for 60 s (module
+TTL dict, same pattern as the Odoo-side `_ROLE_CACHE`).
+
+**Iteration during fix:** first version failed because
+`_call("res.users", "read", [[user_id], {"fields": [...]}])` passed
+`fields` as a positional arg instead of a kwarg, so Odoo interpreted
+the dict as another field name and raised `Invalid field fields`.
+Corrected to `_call(..., [[user_id]], {"fields": [...]})`.
+
+**Lesson:** any input that crosses a trust boundary (client -> server)
+must be re-validated server-side. ANDing client claim with server truth
+is safer than trusting either alone.
+
+---
+
 ## Summary table
 
 | ID | Title                                       | Severity | Time to fix |
@@ -168,5 +199,6 @@ docs/LIMITATIONS.md (L1).
 | T6 | Greedy regex deleted 172 lines              | Critical | ~15 min     |
 | T7 | CrewAI Tool not callable                    | Medium   | ~5 min      |
 | T8 | Permission guard out of sync with router    | High     | ~10 min     |
+| T9 | Client-claimed is_manager trusted at API    | Critical | ~45 min     |
 
 **Total debug time:** ~80 min spread over one working day.

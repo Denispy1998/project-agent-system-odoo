@@ -5,12 +5,24 @@ This document lists architectural limitations honestly, so future readers
 
 ---
 
-## L1 — Permission guard is "advisory" on the Odoo side
+## L1 — Permission guard: server-side verified (v2.5)
 
-**Symptom:** the chat orchestrator blocks write intents for Team Members,
-but the underlying `odoo_tools.py` connects to Odoo with `admin/admin`
-(from `.env`), so any direct HTTP call to the FastAPI service that passes
-`is_manager: true` will execute writes with admin privileges.
+**Historically (before v2.5):** the chat orchestrator blocked write intents
+for Team Members, but the underlying `odoo_tools.py` connected to Odoo with
+`admin/admin` (from `.env`). Any direct HTTP call to the FastAPI service
+that passed `is_manager: true` would execute writes with admin privileges.
+
+**Current state (v2.5):** the FastAPI layer no longer trusts the client
+flag. `main.py` calls `verify_user_is_manager(user_id)` which queries Odoo
+via XML-RPC to confirm actual group membership. Client claims are ANDed with
+server truth: an attacker sending `is_manager: true` for a Team Member is
+downgraded server-side (logged as `[PermissionGuard] ... downgraded`). The
+check uses a 60-second TTL cache to keep XML-RPC traffic negligible.
+
+**Residual risk:** if an attacker has shell access to the host, they can
+read `.env` and call Odoo directly as admin, bypassing both FastAPI and
+the orchestrator. That case is outside the threat model of a locally-hosted
+prototype.
 
 **Why this is acceptable today:**
 - FastAPI listens on `127.0.0.1:8001` only (not exposed on the LAN).
