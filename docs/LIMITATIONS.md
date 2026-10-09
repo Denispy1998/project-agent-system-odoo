@@ -29,6 +29,11 @@ but the underlying `odoo_tools.py` connects to Odoo with `admin/admin`
 **Impact if ignored:** none for the PIC2 scope (single-user evaluation).
 Documented here for integrity.
 
+**Related incident:** during v2.4 testing, the app-level guard missed the
+`set` and `mark` verbs used by new router patterns, briefly allowing a
+Team Member to write via chat. Fixed in v2.4.4. See T8 in
+CHANGELOG_TECHNICAL.md — an instance of L1 propagating one layer up.
+
 ---
 
 ## L2 — No automated test suite

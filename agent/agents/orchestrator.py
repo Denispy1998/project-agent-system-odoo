@@ -126,8 +126,16 @@ def run_orchestrator(
     model_name: str = "groq",
 ) -> str:
     # === Permission guard: block write intents for team members ===
-    write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit",
-                      "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar"]
+    # KEEP IN SYNC with the write verbs used by router.py patterns.
+    # Router write patterns start with: create, add, move, delete, set, mark.
+    # If a new write verb is added to the router, add it here too.
+    write_keywords = [
+        "create", "add", "delete", "remove", "move", "update", "edit",
+        "set ", "set\t",              # 'set task X ...' (trailing space to avoid 'settings')
+        "mark ", "assign ",            # 'mark task X as ...'
+        "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar",
+        "definir", "marcar", "atribuir",
+    ]
     msg_lower = user_message.lower()
     wants_write = any(k in msg_lower for k in write_keywords)
 

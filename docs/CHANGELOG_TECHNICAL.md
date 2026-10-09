@@ -129,6 +129,33 @@ inspect type(obj) before calling.
 
 ---
 
+## T8 — Permission guard out of sync with router write verbs
+
+**Symptom:** a Team Member (jose) sent `set task Task-1 to concluded` via chat
+and the operation succeeded instead of returning DENIED. The same happened
+with `mark task X as done`.
+
+**Root cause:** the orchestrator guard kept a hardcoded list of write verbs:
+
+    write_keywords = ["create", "add", "delete", "remove", "move",
+                      "update", "edit", ...]
+
+When `set_task_status` was added in v2.4, its router patterns start with
+`set task ...` and `mark task ...`. Neither verb was in the guard list, so
+the request skipped the DENIED check and reached the tool.
+
+**Fix:** extend the list with the router verbs (set, mark, assign) and add
+a synchronization comment:
+
+    # KEEP IN SYNC with the write verbs used by router.py patterns.
+
+**Lesson:** when a router pattern introduces a new verb, the app-level guard
+must be updated in the same change. A single source of truth (shared enum)
+would prevent this class of bugs. Structural risk acknowledged in
+docs/LIMITATIONS.md (L1).
+
+---
+
 ## Summary table
 
 | ID | Title                                       | Severity | Time to fix |
@@ -140,5 +167,6 @@ inspect type(obj) before calling.
 | T5 | XML ID mismatch + dead groups.xml           | High     | ~20 min     |
 | T6 | Greedy regex deleted 172 lines              | Critical | ~15 min     |
 | T7 | CrewAI Tool not callable                    | Medium   | ~5 min      |
+| T8 | Permission guard out of sync with router    | High     | ~10 min     |
 
 **Total debug time:** ~80 min spread over one working day.
