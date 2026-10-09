@@ -1,0 +1,36 @@
+name: Pytest
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit tests (mocked)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/agents_api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r agent/agents_api/requirements.txt
+          pip install pytest==8.3.4
+
+      - name: Run unit tests
+        env:
+          # Prevent litellm from phoning home during import
+          LITELLM_DISABLE_TELEMETRY: "True"
+        run: |
+          python -m pytest tests/unit/ -v

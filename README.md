@@ -3,6 +3,7 @@
 **Version 2.5.3** (RBAC + task lifecycle + Burndown/Velocity)
 
 [![Lint](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml)
+[![Pytest](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml)
 **Author:** Denilson Fragoso Da Silva Santos
 **Institution:** Instituto Superior Técnico, University of Lisbon
 **Course:** MEIC — Mestrado em Engenharia Informática e de Computadores

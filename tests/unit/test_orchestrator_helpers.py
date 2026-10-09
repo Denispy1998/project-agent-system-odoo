@@ -5,9 +5,16 @@ scope here (covered by smoke test). We only test:
 - _detect_diagram_intent()
 - the permission-guard verb list (regression for T8)
 """
+import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/home/denispy/project-agent-system")
+# Make both dev tree (agents/, tools/ at repo root) and repo tree
+# (agent/agents/, agent/tools/) importable from the same test file.
+_root = Path(__file__).resolve().parents[2]
+for _p in (str(_root), str(_root / "agent")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import pytest
 
