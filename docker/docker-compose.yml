@@ -1,0 +1,52 @@
+# Reference docker-compose for the FastAPI + CrewAI microservice.
+# NOT tested end-to-end. See docker/README.md for assumptions and limits.
+#
+# Usage (from repo root):
+#   docker compose -f docker/docker-compose.yml up --build
+#   docker compose -f docker/docker-compose.yml down
+#
+# Assumptions:
+#   - Odoo 19 is running on the host (WSL or Windows) at port 8069.
+#   - PostgreSQL is managed by that Odoo instance, not by this compose.
+#   - The .env file lives at the repo root and is mounted read-only.
+#   - On Linux, `host.docker.internal` requires extra_hosts (set below).
+#   - On Docker Desktop for Windows, `host.docker.internal` is built-in.
+
+services:
+  agents:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agents
+    image: pas-agents:2.5.4
+    container_name: pas-agents
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8001"
+    env_file:
+      - ../.env
+    environment:
+      # Inside the container, reach the host's Odoo
+      ODOO_URL: "http://host.docker.internal:8069"
+      ODOO_DB: "odoo"
+      ODOO_USER: "admin"
+      ODOO_PASSWORD: "admin"
+      DEFAULT_MODEL: "groq"
+    extra_hosts:
+      # Needed on Linux/WSL so host.docker.internal resolves
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Mount code so live edits don't require rebuilds (dev)
+      - ../agent:/app/agent:ro
+      - ../tests:/app/tests:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - pas-net
+
+networks:
+  pas-net:
+    driver: bridge

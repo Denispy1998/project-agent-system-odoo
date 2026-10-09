@@ -130,6 +130,12 @@ round-tripping from RSL to Odoo models was out of scope for the project.
 
 ---
 
+## L8 — Docker files are reference artifacts
+
+The docker/ folder contains a Dockerfile for the FastAPI + CrewAI microservice and a matching docker-compose.yml, but they have NOT been run end-to-end. They are provided as reference artifacts for portability discussions and future work. The primary deployment remains direct execution in WSL2 (see start_all.sh). Full containerization of Odoo 19 + PostgreSQL is listed as future work.
+
+---
+
 ## L7 — Browser UI is server-rendered
 
 All UI is Python f-strings inside `chatbot.py` (~1456 lines). There is no

@@ -104,6 +104,7 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 |   |-- security/
 |   |-- static/
 |   `-- views/
+|-- docker/                 # Reference Dockerfiles (not tested end-to-end)
 |-- docs/
 |   `-- specs/                # RSL/ASL specifications and diagrams
 |-- .env.example
