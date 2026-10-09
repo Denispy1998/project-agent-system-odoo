@@ -1,6 +1,8 @@
 # Project Agent System — Odoo Multi-Agent AI Ecosystem
 
-**Version 2.4** (RBAC + task lifecycle + dynamic diagrams)
+**Version 2.5.3** (RBAC + task lifecycle + Burndown/Velocity)
+
+[![Lint](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml)
 **Author:** Denilson Fragoso Da Silva Santos
 **Institution:** Instituto Superior Técnico, University of Lisbon
 **Course:** MEIC — Mestrado em Engenharia Informática e de Computadores

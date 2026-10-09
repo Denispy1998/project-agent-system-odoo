@@ -1,0 +1,85 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Syntax + XML + JSON checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile all Python files
+        run: |
+          set -e
+          echo "=== python -m py_compile ==="
+          find . -name "*.py" -not -path "./venv_agents/*" -not -path "*/__pycache__/*" | while read f; do
+            python -m py_compile "$f"
+            echo "  OK  $f"
+          done
+
+      - name: Validate XML files
+        run: |
+          set -e
+          echo "=== XML well-formedness ==="
+          python -c "
+          import sys, xml.etree.ElementTree as ET
+          from pathlib import Path
+          ok = 0
+          for p in Path('.').rglob('*.xml'):
+              if 'venv' in str(p) or '__pycache__' in str(p):
+                  continue
+              try:
+                  ET.parse(p)
+                  print('  OK ', p)
+                  ok += 1
+              except Exception as e:
+                  print('  FAIL', p, e)
+                  sys.exit(1)
+          print(f'Validated {ok} XML files')
+          "
+
+      - name: Validate CSV files
+        run: |
+          python -c "
+          import csv, sys
+          from pathlib import Path
+          ok = 0
+          for p in Path('.').rglob('*.csv'):
+              if 'venv' in str(p) or '__pycache__' in str(p):
+                  continue
+              try:
+                  with open(p, newline='') as f:
+                      list(csv.reader(f))
+                  print('  OK ', p)
+                  ok += 1
+              except Exception as e:
+                  print('  FAIL', p, e)
+                  sys.exit(1)
+          print(f'Validated {ok} CSV files')
+          "
+
+      - name: Manifest sanity
+        run: |
+          echo "=== Odoo manifest ==="
+          python -c "
+          import ast
+          with open('odoo-module/__manifest__.py') as f:
+              m = ast.literal_eval(f.read())
+          assert 'version' in m, 'missing version'
+          assert m['installable'] is True, 'must be installable'
+          print('  version  :', m['version'])
+          print('  name     :', m['name'])
+          print('  depends  :', m['depends'])
+          print('  data     :', len(m['data']), 'files')
+          "
