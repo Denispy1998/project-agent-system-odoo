@@ -4,7 +4,7 @@ langchain-community==0.3.27
 langchain-groq==0.2.4
 langchain-openai==0.3.30
 langchain-anthropic==0.3.19
-litellm==1.63.0
+litellm==1.74.9
 fastapi==0.115.6
 uvicorn==0.34.0
 python-dotenv==1.0.1
