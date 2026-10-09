@@ -48,7 +48,10 @@ CHANGELOG_TECHNICAL.md — an instance of L1 propagating one layer up.
 
 ---
 
-## L2 — No automated test suite
+## L2 — No pytest suite (smoke test only)
+
+**Status (v2.5.1):** a scripted smoke test now exists at tests/smoke_test.py. It runs 16 end-to-end checks (services, router local, diagram generation, task status tool, RBAC, server-side verification). Exit code 0 on success, 1 on failures. Pytest unit tests and CI integration remain as future work.
+
 
 **Symptom:** all verification is manual (curl, browser, `odoo-bin shell`).
 No pytest, no CI.

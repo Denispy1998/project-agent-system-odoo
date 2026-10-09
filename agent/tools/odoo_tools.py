@@ -528,14 +528,23 @@ def _user_is_manager_via_xmlrpc(user_id):
         if not rows:
             return False
         user = rows[0]
+        # Fast-path: admin by login
         if user.get("login") == "admin":
             return True
+        # Real check 1: Gestor de Projeto group by name
         grp_ids = _call("res.groups", "search",
                         [[["name", "=", "Gestor de Projeto"]]],
                         {"limit": 1})
-        if not grp_ids:
-            return False
-        return grp_ids[0] in (user.get("group_ids") or [])
+        if grp_ids and grp_ids[0] in (user.get("group_ids") or []):
+            return True
+        # Real check 2: built-in system group (superuser / admin equivalent)
+        sys_ids = _call("ir.model.data", "search_read",
+                        [[["module", "=", "base"],
+                          ["name", "=", "group_system"]]],
+                        {"fields": ["res_id"], "limit": 1})
+        if sys_ids and sys_ids[0].get("res_id") in (user.get("group_ids") or []):
+            return True
+        return False
     except Exception as e:
         print(f"[verify_manager] XML-RPC error for user_id={user_id}: {e}")
         return False
