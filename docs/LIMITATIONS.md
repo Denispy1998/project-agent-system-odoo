@@ -48,9 +48,24 @@ CHANGELOG_TECHNICAL.md — an instance of L1 propagating one layer up.
 
 ---
 
-## L2 — No pytest suite (smoke test only)
+## L2 — Testing: pytest unit + smoke (no CI integration yet)
 
-**Status (v2.5.1):** a scripted smoke test now exists at tests/smoke_test.py. It runs 16 end-to-end checks (services, router local, diagram generation, task status tool, RBAC, server-side verification). Exit code 0 on success, 1 on failures. Pytest unit tests and CI integration remain as future work.
+**Status (v2.5.6):** two layers of testing exist.
+
+1. Pytest unit tests — tests/unit/ (4 files, 44 tests, ~9s):
+   - test_router.py (16): regex patterns + helpers
+   - test_mermaid_tools.py (11): kind detection + fallback
+   - test_odoo_tools_helpers.py (12): status synonyms,
+     verify_user_is_manager (mocked XML-RPC), TTL cache
+   - test_orchestrator_helpers.py (5): diagram intent,
+     permission-guard verb list (T8 regression), DENIED path
+
+2. Smoke test — tests/smoke_test.py (16 checks) against the
+   live stack (FastAPI + Odoo). Runs in ~30-60 s.
+
+Still missing: pytest is not wired into GitHub Actions.
+Only the Lint workflow runs in CI. A pytest.yml that installs
+CrewAI/litellm (heavy, ~5 min) is future work.
 
 
 **Symptom:** all verification is manual (curl, browser, `odoo-bin shell`).
