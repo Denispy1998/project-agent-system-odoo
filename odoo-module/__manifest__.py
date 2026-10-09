@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AI Project Management Ecosystem',
-    'version': '2.1.0',
+    'version': '19.0.2.4.4',
     'category': 'Project',
     'summary': 'Multi-agent AI ecosystem for project management (Odoo 19)',
     'description': """

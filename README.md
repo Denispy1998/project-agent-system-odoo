@@ -235,7 +235,7 @@ Payload:
 
 ## Agent Tools (17 idempotent)
 
-**Read:**
+**Read (6):**
 
 - `list_projects`
 - `list_tasks`
@@ -244,16 +244,23 @@ Payload:
 - `prioritize_tasks`
 - `project_summary`
 
-**Write:**
+**Write (10):**
 
 - `create_project`
 - `add_task`
 - `create_stage`
 - `move_single_task`
 - `move_tasks`
+- `move_all_tasks`
+- `set_task_status`
 - `delete_task`
 - `delete_stage`
 - `delete_project`
+
+**Diagram (1):**
+
+- `generate_mermaid_diagram` (7 kinds: flowchart, sequence, er, class,
+  state, gantt, pie — dynamic via LLM with deterministic fallback)
 
 ---
 
