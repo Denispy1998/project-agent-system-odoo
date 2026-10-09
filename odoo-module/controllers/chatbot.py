@@ -1069,6 +1069,11 @@ class ChatbotController(http.Controller):
         user_labels = json.dumps([u['name'] for u in user_list])
         user_data = json.dumps([u['count'] for u in user_list])
 
+        burndown_labels = json.dumps(stats.get('burndown_labels', []))
+        burndown_data = json.dumps(stats.get('burndown_data', []))
+        velocity_labels = json.dumps(stats.get('velocity_labels', []))
+        velocity_data = json.dumps(stats.get('velocity_data', []))
+
         stage_detail = ''.join(
             f'<div class="detail-item"><span class="label">{s["name"]}</span><span class="value">{s["count"]}</span></div>'
             for s in stage_list
@@ -1103,6 +1108,17 @@ class ChatbotController(http.Controller):
                 </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div class="chart-card">
+                    <h3><i class="fas fa-fire"></i> Burndown (last 14 days)</h3>
+                    <canvas id="burndownChart" style="max-height: 320px;"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fas fa-tachometer-alt"></i> Velocity (last 8 weeks)</h3>
+                    <canvas id="velocityChart" style="max-height: 320px;"></canvas>
+                </div>
+            </div>
+
             <div class="detail-section">
                 <h3><i class="fas fa-list-check"></i> Detailed Stage Breakdown</h3>
                 <div class="detail-grid">{stage_detail}</div>
@@ -1127,6 +1143,32 @@ class ChatbotController(http.Controller):
                     data: {{
                         labels: {user_labels},
                         datasets: [{{ label: 'Tasks', data: {user_data}, backgroundColor: '#714B67', borderRadius: 8 }}]
+                    }},
+                    options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }},
+                                scales: {{ y: {{ beginAtZero: true }} }} }}
+                }});
+                new Chart(document.getElementById('burndownChart'), {{
+                    type: 'line',
+                    data: {{
+                        labels: {burndown_labels},
+                        datasets: [{{
+                            label: 'Open tasks',
+                            data: {burndown_data},
+                            borderColor: '#714B67',
+                            backgroundColor: 'rgba(113,75,103,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3
+                        }}]
+                    }},
+                    options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }},
+                                scales: {{ y: {{ beginAtZero: true }} }} }}
+                }});
+                new Chart(document.getElementById('velocityChart'), {{
+                    type: 'bar',
+                    data: {{
+                        labels: {velocity_labels},
+                        datasets: [{{ label: 'Concluded', data: {velocity_data}, backgroundColor: '#875A7A', borderRadius: 8 }}]
                     }},
                     options: {{ responsive: true, plugins: {{ legend: {{ display: false }} }},
                                 scales: {{ y: {{ beginAtZero: true }} }} }}

@@ -126,6 +126,45 @@ def get_project_stats(project_id=None):
         except Exception as e:
             _logger.warning(f"Activity calculation failed: {e}")
 
+        # ---- Burndown (v2.5.3): last 14 days, remaining open tasks per day ----
+        burndown_labels = []
+        burndown_data = []
+        try:
+            today_d = datetime.now().date()
+            for i in range(13, -1, -1):
+                d = today_d - timedelta(days=i)
+                day_end = datetime.combine(d, datetime.max.time())
+                open_count = Task.search_count([
+                    ('create_date', '<=', day_end),
+                    '|',
+                    ('date_end', '=', False),
+                    ('date_end', '>', day_end),
+                ])
+                burndown_labels.append(d.strftime('%d/%m'))
+                burndown_data.append(open_count)
+        except Exception as e:
+            _logger.warning(f"Burndown failed: {e}")
+
+        # ---- Velocity (v2.5.3): last 8 weeks, concluded tasks per week ----
+        velocity_labels = []
+        velocity_data = []
+        try:
+            today_d = datetime.now().date()
+            monday_this_week = today_d - timedelta(days=today_d.weekday())
+            for i in range(7, -1, -1):
+                week_start_d = monday_this_week - timedelta(days=i * 7)
+                week_end_d = week_start_d + timedelta(days=6)
+                ws_dt = datetime.combine(week_start_d, datetime.min.time())
+                we_dt = datetime.combine(week_end_d, datetime.max.time())
+                count = Task.search_count([
+                    ('date_end', '>=', ws_dt),
+                    ('date_end', '<=', we_dt),
+                ])
+                velocity_labels.append(week_start_d.strftime('%d/%m'))
+                velocity_data.append(count)
+        except Exception as e:
+            _logger.warning(f"Velocity failed: {e}")
+
         return {
             'total_projects': total_projects,
             'total_tasks': total_tasks,
@@ -133,6 +172,10 @@ def get_project_stats(project_id=None):
             'user_stats': user_stats,
             'avg_lead_time': avg_lead_time,
             'throughput': throughput,
+            'burndown_labels': burndown_labels,
+            'burndown_data': burndown_data,
+            'velocity_labels': velocity_labels,
+            'velocity_data': velocity_data,
         }
     except Exception as e:
         _logger.error(f"get_project_stats error: {e}")
@@ -143,4 +186,8 @@ def get_project_stats(project_id=None):
             'user_stats': [],
             'avg_lead_time': 0.0,
             'throughput': 0.0,
+            'burndown_labels': [],
+            'burndown_data': [],
+            'velocity_labels': [],
+            'velocity_data': [],
         }
