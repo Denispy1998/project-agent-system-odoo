@@ -233,7 +233,7 @@ Payload:
 
 ---
 
-## Agent Tools (14 idempotent)
+## Agent Tools (17 idempotent)
 
 **Read:**
 
@@ -243,7 +243,6 @@ Payload:
 - `analyze_risks`
 - `prioritize_tasks`
 - `project_summary`
-- `debug_list_all_tasks`
 
 **Write:**
 
@@ -294,7 +293,7 @@ ChatFolder, ChatSession, StreamChat, AgentTemplate, AgentInstance, AgentTask.
 ## Known Limitations
 
 - ITOI validator and templating engine accept different syntactic profiles.
-- Groq rate limit: 1000 OTPM (output), 7000 ITPM (input) on free tier. The orchestrator handles this gracefully: write intents get a single attempt (the tool already executed, retries waste tokens), and any rate-limit exception returns a friendly retry message instead of a raw traceback.
+- Groq rate limit: 1000 OTPM (output), 7000 ITPM (input) on free tier. The orchestrator handles this gracefully: the hybrid router absorbs ~90% of traffic locally, and the LLM fallback retries up to 3 times with exponential backoff [30s, 60s, 120s]. If all attempts fail, the user gets a friendly retry message instead of a raw traceback.
 - Odoo 19 `ir.cron` removed `numbercall` and `doall`.
 - `project.task.user_id` does not exist; use `user_ids` or `create_uid`.
 - ReportLab `Bullet` style name conflict; use unique names.
