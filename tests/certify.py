@@ -216,7 +216,7 @@ def read_api_version():
     return "?"
 
 api_ver = read_api_version()
-check("  FastAPI API_VERSION", api_ver.startswith("2.5"), api_ver)
+check("  FastAPI API_VERSION", api_ver == "2.6.2", api_ver)
 
 
 # ─────────────────────────────────────────────────────────────
