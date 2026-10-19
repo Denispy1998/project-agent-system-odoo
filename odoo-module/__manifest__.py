@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AI Project Management Ecosystem',
-    'version': '19.0.2.4.4',
+    'version': '19.0.2.6.2',
     'category': 'Project',
     'summary': 'Multi-agent AI ecosystem for project management (Odoo 19)',
     'description': """
-AI Project Management Ecosystem v2.0
+AI Project Management Ecosystem v2.6.2
 =====================================
 Multi-agent AI ecosystem for project management with:
 - CrewAI orchestrator (Project Manager, Team Member, Reporting, Diagram agents)

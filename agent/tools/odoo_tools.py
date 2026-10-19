@@ -108,12 +108,13 @@ def list_tasks(project_name: str = "") -> str:
         if not task_ids:
             return "INFO: No tasks found."
         tasks = _call('project.task', 'read', [task_ids],
-                      {'fields': ['name', 'stage_id', 'project_id']})
+                      {'fields': ['name', 'stage_id', 'project_id', 'task_status']})
         lines = [f"All tasks ({len(tasks)} total):"]
         for t in tasks[:50]:
             stage = "No Stage" if not t['stage_id'] else t['stage_id'][1]
             proj = "No Project" if not t.get('project_id') else t['project_id'][1]
-            lines.append(f"  • {t['name']} (Project: {proj} | Stage: {stage})")
+            status = t.get('task_status') or 'in_backlog'
+            lines.append(f"  • {t['name']} (Project: {proj} | Stage: {stage} | Status: {status})")
         if len(tasks) > 50:
             lines.append(f"  ... and {len(tasks) - 50} more")
         return "\n".join(lines)

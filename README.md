@@ -1,6 +1,6 @@
 # Project Agent System — Odoo Multi-Agent AI Ecosystem
 
-**Version 2.5.3** (RBAC + task lifecycle + Burndown/Velocity)
+**Version 2.6.2** (RBAC + task lifecycle + Burndown/Velocity + certification)
 
 [![Lint](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml)
 [![Pytest](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml)
@@ -32,7 +32,7 @@ Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
 - **Odoo 19 module `meu_assistente_ia`**: web UI, chat sessions, dashboards, PDF/CSV export, permissions, cron.
 - **FastAPI microservice** (`agents_api`): exposes `/agent/run` and `/health`.
 - **CrewAI orchestrator**: routes requests to specialized agents (Project Manager, Team Member, Reporting, Diagram).
-- **Odoo tools** (`odoo_tools.py`): 14 idempotent read/write tools via XML-RPC.
+- **Odoo tools** (`odoo_tools.py`): 17 idempotent read/write tools via XML-RPC.
 - **LLM**: Groq (default), optional OpenAI / Anthropic.
 
 ---

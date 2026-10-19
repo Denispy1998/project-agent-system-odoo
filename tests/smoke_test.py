@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Smoke test for the AI Project Management Ecosystem (v2.5.0)
+# Smoke test for the AI Project Management Ecosystem (v2.6.2)
 #
 # Runs ~20 checks against the live system and prints PASS/FAIL per test.
 # Exit 0 if all PASS (SKIP allowed), 1 otherwise.
@@ -182,7 +182,7 @@ def test_rbac():
 # ----------------------------------------------------------------
 def main():
     print("==========================================================")
-    print("  SMOKE TEST -- AI Project Management Ecosystem (v2.5.0)")
+    print("  SMOKE TEST -- AI Project Management Ecosystem (v2.6.2)")
     print("==========================================================")
     print("Started at " + datetime.now().isoformat(timespec="seconds"))
 
