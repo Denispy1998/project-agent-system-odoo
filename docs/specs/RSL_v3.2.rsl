@@ -1,0 +1,640 @@
+/*
+ * AI Project Management Ecosystem — RSL specification (v3.2)
+ * Author: Denilson Fragoso Da Silva Santos (IST-1113142)
+ * Advisor: Prof. Alberto Rodrigues da Silva
+ * Language: ITLingo RSL v2023
+ *
+ * v3.2 — parser-clean (0 errors):
+ *  - Removed `isExternal` from Stakeholders.
+ *  - Stakeholders use only `description`.
+ *  - QRs use only : Performance / : Reliability / : Usability / : Security.
+ */
+
+Package aiprojectmanagementecosystem
+
+System AIProjectManagement "AI Project Management Ecosystem" : Application [ isFinal
+    version "3.2"
+    vendor  "IST-MEIC"
+    description
+    "Multi-agent AI ecosystem for project management, integrated with
+     Odoo 19 and a Hybrid Router + LLM fallback (Groq). It supports
+     Project Managers, Team Members, Product Managers and Administrators
+     through a natural-language chat interface, persistent chat sessions,
+     AI-generated diagrams, RBAC, and an Odoo-backed persistence layer."
+]
+
+/* ============================================================
+ * Stakeholders
+ * ============================================================ */
+Stakeholder stk_ProjectManager "Project Manager" : Person : Person_User [
+    description "External stakeholder concerned with efficient planning, execution and monitoring of projects. Responsible for defining projects, tasks and stages, and for approving consequential writes."
+]
+
+Stakeholder stk_TeamMember "Team Member" : Person : Person_User [
+    description "External stakeholder concerned with visibility over assigned tasks and clear project status. Responsible for executing tasks and reporting progress."
+]
+
+Stakeholder stk_ProductManager "Product Manager" : Person : Person_User [
+    description "External stakeholder concerned with a prioritised backlog and reliable risk signals. Responsible for prioritising tasks and analysing delay risk."
+]
+
+Stakeholder stk_Administrator "Administrator" : Person : Person_User [
+    description "External stakeholder concerned with a stable, secure and auditable ecosystem. Responsible for managing users, roles, AI providers and system configuration."
+]
+
+Stakeholder stk_LLMProvider "LLM Provider" : Organization : Organization_Customer [
+    description "External organisation concerned with reliable inference and tool-use capabilities under rate limits. Responsible for providing reasoning and tool-use capabilities to AI agents."
+]
+
+Stakeholder stk_OdooPlatform "Odoo Platform" : System : System_External [
+    description "External system concerned with correct persistence and access control. Responsible for persisting ecosystem data and enforcing role-based access."
+]
+
+/* ============================================================
+ * Actors
+ * ============================================================ */
+Actor a_ProjectManager "Project Manager" : User [
+    description "Manages projects, tasks, stages, chat sessions and diagrams."
+]
+Actor a_TeamMember "Team Member" : User [
+    description "Read-only access to projects, tasks and reports."
+]
+Actor a_ProductManager "Product Manager" : User [
+    description "Manages the product backlog and task prioritisation."
+]
+Actor a_Administrator "Administrator" : User [
+    description "Configures the ecosystem and manages users and roles."
+]
+Actor a_LLMProvider "LLM Provider" : ExternalSystem [
+    description "External AI provider invoked by the agent runtime."
+]
+Actor a_OdooPlatform "Odoo Platform" : ExternalSystem [
+    description "External persistence and RBAC substrate (Odoo 19)."
+]
+
+/* ============================================================
+ * Events
+ * ============================================================ */
+Event ev_WeeklyReport      "First day of the week" : Timer       [isCatch]
+Event ev_TaskOverdue       "Task overdue check"    : Conditional [isCatch]
+Event ev_TaskStatusChanged "Task status changed"   : Conditional [isCatch]
+
+/* ============================================================
+ * Data Enumerations
+ * ============================================================ */
+DataEnumeration TaskStatusKind values (
+    TaskBacklog    "In Backlog",
+    TaskInProgress "In Progress",
+    TaskConcluded  "Concluded"
+)
+
+DataEnumeration TaskTypeKind values (
+    TaskManagement  "Management",
+    TaskEngineering "Engineering",
+    TaskOperational "Operational"
+)
+
+DataEnumeration UserRoleKind values (
+    UserRoleProjectManager  "Project Manager",
+    UserRoleTeamMember      "Team Member",
+    UserRoleProductManager  "Product Manager",
+    UserRoleAdministrator   "Administrator"
+)
+
+DataEnumeration AIProviderKind values (ProviderGroq, ProviderOpenAI, ProviderAnthropic)
+
+DataEnumeration AgentTypeKind values (
+    AgentProjectManagerAgent "Project Manager Agent",
+    AgentTeamMemberAgent     "Team Member Agent",
+    AgentReportingAgent      "Reporting Agent",
+    AgentDiagramAgent        "Diagram Agent"
+)
+
+DataEnumeration ChatSessionStatusKind values (
+    ChatSessionActive   "Active",
+    ChatSessionArchived "Archived"
+)
+
+DataEnumeration ProjectAssignmentRoleKind values (
+    AssignmentManager     "Manager",
+    AssignmentContributor "Contributor",
+    AssignmentObserver    "Observer"
+)
+
+DataEnumeration IterationKind values (
+    IterationSprint      "Sprint",
+    IterationWorkPackage "Work Package"
+)
+
+DataEnumeration RouterDecisionKind values (
+    RouterLocalPattern "Local Pattern",
+    RouterLLMFallback  "LLM Fallback"
+)
+
+/* ============================================================
+ * Data Entities
+ * ============================================================ */
+DataEntity e_User "User" : Master [
+    attribute ID           "User identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name         "Full name"       : String(100) [constraints (NotNull)]
+    attribute EmailAddress "Email address"   : String(100) [constraints (NotNull Unique)]
+    attribute LoginName    "Login"           : String(50)  [constraints (NotNull Unique)]
+    attribute IsEnabled    "Is enabled"      : Boolean [defaultValue "True" constraints (NotNull)]
+    attribute SystemRole   "System role"     : DataEnumeration UserRoleKind [constraints (NotNull)]
+    constraints ( showAs(Name) )
+    description "Users of the ecosystem."
+]
+
+DataEntity e_Project "Project" : Master [
+    attribute ID          "Project identifier"  : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name        "Project name"        : String(100) [constraints (NotNull)]
+    attribute Description "Project description" : Text
+    attribute CreatedDate "Creation date"       : Date [defaultValue "today" constraints (NotNull)]
+    attribute OwnerID     "Owner"               : Integer [constraints (NotNull ForeignKey (e_User))]
+    attribute ManagerID   "Project manager"     : Integer [constraints (NotNull ForeignKey (e_User))]
+    constraints ( showAs(Name) )
+    description "Projects managed in the ecosystem."
+]
+
+DataEntity e_ProjectAssignment "Project assignment" : Transaction [
+    attribute ID             "Assignment identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute UserID         "User"                  : Integer [constraints (NotNull ForeignKey (e_User))]
+    attribute ProjectID      "Project"               : Integer [constraints (NotNull ForeignKey (e_Project))]
+    attribute AssignmentRole "Role in project"       : DataEnumeration ProjectAssignmentRoleKind [constraints (NotNull)]
+    description "Assignment of users to projects with a project-level role."
+]
+
+DataEntity e_ProjectStage "Project stage" : Reference [
+    attribute ID            "Stage identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name          "Stage name"       : String(50) [constraints (NotNull)]
+    attribute StageSequence "Stage sequence"   : Integer [constraints (NotNull)]
+    attribute ProjectID     "Project"          : Integer [constraints (NotNull ForeignKey (e_Project))]
+    constraints ( showAs(Name) )
+    description "Ordered workflow stages of a project."
+]
+
+DataEntity e_Iteration "Iteration" : Master [
+    attribute ID        "Iteration identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name      "Iteration name"       : String(80) [constraints (NotNull)]
+    attribute Kind      "Iteration kind"       : DataEnumeration IterationKind [constraints (NotNull)]
+    attribute ProjectID "Project"              : Integer [constraints (NotNull ForeignKey (e_Project))]
+    attribute StartDate "Start date"           : Date
+    attribute EndDate   "End date"             : Date
+    constraints ( showAs(Name) )
+    description "Time-boxed iteration (Sprint) or work package that groups tasks."
+]
+
+DataEntity e_Milestone "Milestone" : Master [
+    attribute ID        "Milestone identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name      "Milestone name"       : String(80) [constraints (NotNull)]
+    attribute DueDate   "Due date"             : Date [constraints (NotNull)]
+    attribute ProjectID "Project"              : Integer [constraints (NotNull ForeignKey (e_Project))]
+    constraints ( showAs(Name) )
+    description "Significant project checkpoint."
+]
+
+DataEntity e_ProjectTask "Project task" : Transaction [
+    attribute ID            "Task identifier"  : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name          "Task name"        : String(200) [constraints (NotNull)]
+    attribute Description   "Task description" : Text
+    attribute ProjectID     "Project"          : Integer [constraints (NotNull ForeignKey (e_Project))]
+    attribute StageID       "Stage"            : Integer [constraints (ForeignKey (e_ProjectStage))]
+    attribute IterationID   "Iteration"        : Integer [constraints (ForeignKey (e_Iteration))]
+    attribute TaskType      "Task type"        : DataEnumeration TaskTypeKind   [constraints (NotNull)]
+    attribute TaskStatus    "Task status"      : DataEnumeration TaskStatusKind [defaultValue "TaskBacklog" constraints (NotNull)]
+    attribute CreatedDate   "Creation date"    : Date [defaultValue "today" constraints (NotNull)]
+    attribute ConcludedDate "Conclusion date"  : Date
+    constraints ( showAs(Name) )
+    description "Tasks grouped by project, iteration, stage and type."
+]
+
+DataEntity e_ChatFolder "Chat folder" : Master [
+    attribute ID      "Folder identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name    "Folder name"       : String(100) [constraints (NotNull)]
+    attribute OwnerID "Owner"             : Integer [constraints (NotNull ForeignKey (e_User))]
+    constraints ( showAs(Name) )
+    description "User-owned container for chat sessions."
+]
+
+DataEntity e_ChatSession "Chat session" : Transaction [
+    attribute ID            "Session identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name          "Session name"       : String(100) [constraints (NotNull)]
+    attribute UserID        "Owner"              : Integer [constraints (NotNull ForeignKey (e_User))]
+    attribute FolderID      "Folder"             : Integer [constraints (ForeignKey (e_ChatFolder))]
+    attribute Provider      "AI provider"        : DataEnumeration AIProviderKind [constraints (NotNull)]
+    attribute SessionStatus "Session status"     : DataEnumeration ChatSessionStatusKind [defaultValue "ChatSessionActive" constraints (NotNull)]
+    attribute StartedAt     "Started at"         : Datetime [constraints (NotNull)]
+    constraints ( showAs(Name) )
+    description "Persistent conversation session with the AI agents."
+]
+
+DataEntity e_StreamChat "Chat message" : Transaction [
+    attribute ID             "Message identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute SessionID      "Session"            : Integer [constraints (NotNull ForeignKey (e_ChatSession))]
+    attribute MessageRole    "Message role"       : String(20) [constraints (NotNull)]
+    attribute MessageContent "Message content"    : Text       [constraints (NotNull)]
+    attribute SentAt         "Timestamp"          : Datetime   [constraints (NotNull)]
+    description "Individual message inside a chat session."
+]
+
+DataEntity e_AgentTemplate "Agent template" : Reference [
+    attribute ID             "Template identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute Name           "Template name"       : String(50) [constraints (NotNull)]
+    attribute AgentType      "Agent type"          : DataEnumeration AgentTypeKind [constraints (NotNull)]
+    attribute PromptTemplate "Prompt template"     : Text       [constraints (NotNull)]
+    attribute MaxIterations  "Max iterations"      : Integer    [constraints (NotNull)]
+    constraints ( showAs(Name) )
+    description "Reusable definition of a specialised AI agent."
+]
+
+DataEntity e_AgentTool "Agent tool" : Reference [
+    attribute ID           "Tool identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute TemplateID   "Template"        : Integer [constraints (NotNull ForeignKey (e_AgentTemplate))]
+    attribute Name         "Tool name"       : String(80) [constraints (NotNull)]
+    attribute SideEffect   "Side effect"     : String(20) [constraints (NotNull)]
+    attribute IsIdempotent "Is idempotent"   : Boolean [defaultValue "True" constraints (NotNull)]
+    description "Declared tool exposed to an agent template (idempotent by design)."
+]
+
+DataEntity e_AgentTask "Agent task" : Transaction [
+    attribute ID           "Agent task identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute TemplateID   "Template"              : Integer [constraints (NotNull ForeignKey (e_AgentTemplate))]
+    attribute TaskSequence "Order"                 : Integer [constraints (NotNull)]
+    attribute Instruction  "Instruction"           : Text    [constraints (NotNull)]
+    description "Ordered task executed by an agent template."
+]
+
+DataEntity e_AgentInstance "Agent instance" : Transaction [
+    attribute ID             "Instance identifier" : Integer [constraints (PrimaryKey NotNull Unique)]
+    attribute TemplateID     "Template"            : Integer [constraints (NotNull ForeignKey (e_AgentTemplate))]
+    attribute ProjectID      "Project"             : Integer [constraints (ForeignKey (e_Project))]
+    attribute StartedAt      "Start time"          : Datetime [constraints (NotNull)]
+    attribute EndedAt        "End time"            : Datetime
+    attribute RouterDecision "Router decision"     : DataEnumeration RouterDecisionKind
+    attribute Results        "Results"             : Text
+    description "Concrete execution of an agent template, including the router decision."
+]
+
+/* ============================================================
+ * Data Entity Clusters
+ * ============================================================ */
+DataEntityCluster ec_User "Users" : Master [
+    main e_User
+    description "User data cluster."
+]
+
+DataEntityCluster ec_Project "Projects" : Master [
+    main e_Project
+    child e_ProjectAssignment
+    child e_ProjectStage
+    child e_Iteration
+    child e_Milestone
+    child e_ProjectTask
+    uses e_User
+    description "Project planning and execution cluster."
+]
+
+DataEntityCluster ec_AI "AI ecosystem" : Document [
+    main e_ChatSession
+    child e_StreamChat
+    uses e_ChatFolder
+    uses e_AgentTemplate
+    uses e_AgentTool
+    uses e_AgentTask
+    uses e_AgentInstance
+    description "Chat, agent template, tooling and execution cluster."
+]
+
+/* ============================================================
+ * State Machines
+ * ============================================================ */
+StateMachine sm_ProjectTask "Task lifecycle" : Complex [
+    dataEntity e_ProjectTask
+    description "Lifecycle of a project task."
+    state StateBacklog isInitial onEntry "Task is in backlog"
+        useCase uc_MoveTask action aMove nextState StateInProgress
+    state StateInProgress onEntry "Task is being worked on"
+        useCase uc_MoveTask action aMove nextState StateConcluded
+        useCase uc_MoveTask action aMove nextState StateBacklog
+    state StateConcluded isFinal onEntry "Task is concluded"
+]
+
+StateMachine sm_ChatSession "Chat session lifecycle" : Simple [
+    dataEntity e_ChatSession
+    description "Lifecycle of a chat session."
+    state SessionStateActive isInitial onEntry "Session is active"
+        useCase uc_ArchiveChatSession action aArchive nextState SessionStateArchived
+    state SessionStateArchived isFinal onEntry "Session is archived"
+]
+
+/* ============================================================
+ * Action Types
+ * ============================================================ */
+ActionType aMove            [description "Move a task to another stage or status."]
+ActionType aList            [description "List entity instances."]
+ActionType aSearch          [description "Search entity instances."]
+ActionType aFilter          [description "Filter entity instances."]
+ActionType aClose           [description "Close the current interaction space."]
+ActionType aConfirm         [description "Confirm the current interaction."]
+ActionType aCancel          [description "Cancel the current interaction."]
+ActionType aArchive         [description "Archive a chat session."]
+ActionType aSwitchModel     [description "Switch the AI model provider."]
+ActionType aGenerateReport  [description "Generate a project report."]
+ActionType aGenerateDiagram [description "Generate a Mermaid diagram."]
+ActionType aSendReport      [description "Send a report by email."]
+ActionType aExport          [description "Export entity instances to CSV."]
+
+/* ============================================================
+ * Functional Requirements
+ * ============================================================ */
+FR fr_NaturalLanguageInteraction "Natural-language interaction" : Functional [
+    priority High
+    description "The system shall accept natural-language requests from authorised users and translate them into deterministic operations or LLM-backed reasoning."
+]
+
+FR fr_WeeklyReport "Weekly AI ecosystem report" : Functional [
+    priority Medium
+    description "The system shall generate and email a weekly project status report on the first day of each week."
+]
+
+FR fr_SwitchAIModel "Switch AI model" : Functional [
+    priority Medium
+    description "The system shall allow the user to select the AI provider for the current chat session."
+]
+
+FR fr_AnalyzeRisks "Analyse delay risk" : Functional [
+    priority High
+    description "The system shall analyse tasks without stage and estimate a delay-risk level for a project."
+]
+
+FR fr_PrioritizeTasks "Prioritise tasks" : Functional [
+    priority Medium
+    description "The system shall prioritise tasks based on their stage, status and age."
+]
+
+FR fr_ExportData "Export data" : Functional [
+    priority Low
+    description "The system shall export project or task data to CSV."
+]
+
+/* ============================================================
+ * Quality Requirements
+ * ============================================================ */
+QR qr_ResponseTime "Interactive response time" : Performance [
+    description "Interactive chat responses shall be returned within at most fifteen seconds (95th percentile)."
+]
+
+QR qr_LocalRouterLatency "Local router latency" : Performance [
+    description "Requests classified by the local router shall complete within 250 milliseconds (95th percentile)."
+]
+
+QR qr_Availability "Service availability" : Reliability [
+    description "The ecosystem shall remain available at least 99 percent of the working period."
+]
+
+QR qr_Usability "Usability" : Usability [
+    description "Non-technical users shall reach a System Usability Scale score of at least 80."
+]
+
+QR qr_Security "Role-based security" : Security [
+    description "The system shall enforce role-based permissions on every write operation, server-side."
+]
+
+QR qr_Grounding "Grounded AI responses" : Reliability [
+    description "Material answers returned by AI agents shall be grounded in tool responses or approved knowledge, targeting at least 95 percent of material claims."
+]
+
+QR qr_GracefulDegradation "Graceful degradation under rate limits" : Reliability [
+    description "The system shall degrade gracefully when the AI provider rate limit is reached, using up to three retry attempts with exponential backoff (30s, 60s, 120s)."
+]
+
+/* ============================================================
+ * Constraints
+ * ============================================================ */
+Constraint c_HumanAuthority "Human authority over writes" : Organizational : Organizational_Management [
+    priority VeryHigh
+    description "AI agents shall not execute consequential write operations without an authorised human decision."
+]
+
+Constraint c_ApprovedTools "Approved tools only" : Technological : Technological_PlatformSoftware [
+    description "AI agents shall invoke only explicitly declared and authorised tools."
+]
+
+Constraint c_EnglishLanguage "English language" : Other [
+    description "All user-facing strings and documentation shall be in English."
+]
+
+Constraint c_OdooVersion "Odoo 19 requirement" : Technological : Technological_PlatformSoftware [
+    description "The ecosystem shall run on Odoo 19 with PostgreSQL 18."
+]
+
+Constraint c_Idempotency "Idempotent write operations" : Other [
+    description "All write operations exposed to AI agents shall be idempotent."
+]
+
+/* ============================================================
+ * Use Cases
+ * ============================================================ */
+UseCase uc_ManageProjects "Manage Projects" : EntitiesManage [
+    primaryActor a_ProjectManager
+    supportingActors a_Administrator
+    dataEntity ec_Project
+    extensionPoints xp_Create, xp_Update, xp_Delete, xp_List
+    description "Manages projects through natural-language interaction."
+]
+
+UseCase uc_CreateProject "Create Project" : EntityCreate [
+    primaryActor a_ProjectManager
+    dataEntity e_Project
+    actions aConfirm, aCancel
+    extends uc_ManageProjects onExtensionPoint uc_ManageProjects.xp_Create
+    description "Creates a new project."
+]
+
+UseCase uc_UpdateProject "Update Project" : EntityUpdate [
+    primaryActor a_ProjectManager
+    dataEntity e_Project
+    actions aConfirm, aCancel
+    extends uc_ManageProjects onExtensionPoint uc_ManageProjects.xp_Update
+    description "Updates an existing project."
+]
+
+UseCase uc_DeleteProject "Delete Project" : EntityDelete [
+    primaryActor a_ProjectManager
+    dataEntity e_Project
+    actions aConfirm, aCancel
+    extends uc_ManageProjects onExtensionPoint uc_ManageProjects.xp_Delete
+    description "Deletes an existing project."
+]
+
+UseCase uc_ListProjects "List Projects" : EntitiesBrowse [
+    primaryActor a_TeamMember
+    supportingActors a_ProjectManager
+    dataEntity e_Project
+    actions aList
+    extends uc_ManageProjects onExtensionPoint uc_ManageProjects.xp_List
+    description "Lists projects with task counts."
+]
+
+UseCase uc_ManageTasks "Manage Tasks" : EntitiesManage [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectTask
+    extensionPoints xp_Add, xp_Move, xp_Delete, xp_List
+    description "Manages tasks within a project."
+]
+
+UseCase uc_AddTask "Add Task" : EntityCreate [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aConfirm, aCancel
+    extends uc_ManageTasks onExtensionPoint uc_ManageTasks.xp_Add
+    description "Adds a new task to a project."
+]
+
+UseCase uc_MoveTask "Move Task" : EntityUpdate [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aMove
+    extends uc_ManageTasks onExtensionPoint uc_ManageTasks.xp_Move
+    description "Moves a task to a different stage or status."
+]
+
+UseCase uc_DeleteTask "Delete Task" : EntityDelete [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aConfirm, aCancel
+    extends uc_ManageTasks onExtensionPoint uc_ManageTasks.xp_Delete
+    description "Deletes an existing task."
+]
+
+UseCase uc_ListTasks "List Tasks" : EntitiesBrowse [
+    primaryActor a_TeamMember
+    supportingActors a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aList
+    extends uc_ManageTasks onExtensionPoint uc_ManageTasks.xp_List
+    description "Lists tasks of a project."
+]
+
+UseCase uc_ManageStages "Manage Stages" : EntitiesManage [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectStage
+    extensionPoints xp_Create, xp_Delete, xp_List
+    description "Manages workflow stages of a project."
+]
+
+UseCase uc_CreateStage "Create Stage" : EntityCreate [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectStage
+    actions aConfirm, aCancel
+    extends uc_ManageStages onExtensionPoint uc_ManageStages.xp_Create
+    description "Creates a new workflow stage."
+]
+
+UseCase uc_DeleteStage "Delete Stage" : EntityDelete [
+    primaryActor a_ProjectManager
+    dataEntity e_ProjectStage
+    actions aConfirm, aCancel
+    extends uc_ManageStages onExtensionPoint uc_ManageStages.xp_Delete
+    description "Deletes an empty workflow stage."
+]
+
+UseCase uc_ListStages "List Stages" : EntitiesBrowse [
+    primaryActor a_TeamMember
+    supportingActors a_ProjectManager
+    dataEntity e_ProjectStage
+    actions aList
+    extends uc_ManageStages onExtensionPoint uc_ManageStages.xp_List
+    description "Lists stages of a project."
+]
+
+UseCase uc_ManageIterations "Manage Iterations" : EntitiesManage [
+    primaryActor a_ProjectManager
+    dataEntity e_Iteration
+    extensionPoints xp_Create, xp_Delete, xp_List
+    description "Manages sprints and work packages of a project."
+]
+
+UseCase uc_AnalyzeRisks "Analyse Risks" : EntityRead [
+    primaryActor a_ProductManager
+    supportingActors a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aList
+    description "Analyses tasks without stage and estimates delay risk."
+]
+
+UseCase uc_PrioritizeTasks "Prioritise Tasks" : EntityRead [
+    primaryActor a_ProductManager
+    supportingActors a_ProjectManager
+    dataEntity e_ProjectTask
+    actions aList
+    description "Returns tasks ordered by priority."
+]
+
+UseCase uc_SwitchAIModel "Switch AI Model" : EntityUpdate [
+    primaryActor a_ProjectManager
+    dataEntity e_ChatSession
+    actions aSwitchModel
+    description "Switches the AI provider of the current chat session."
+]
+
+UseCase uc_ArchiveChatSession "Archive Chat Session" : EntityUpdate [
+    primaryActor a_ProjectManager
+    dataEntity e_ChatSession
+    actions aArchive
+    description "Archives a chat session while preserving its history."
+]
+
+UseCase uc_GenerateReport "Generate Project Report" : EntityReport [
+    primaryActor a_ProjectManager
+    dataEntity e_Project
+    actions aGenerateReport
+    description "Generates a PDF report for a project."
+]
+
+UseCase uc_GenerateDiagram "Generate Diagram" : EntityReport [
+    primaryActor a_ProjectManager
+    dataEntity e_Project
+    actions aGenerateDiagram
+    description "Generates a Mermaid diagram from a natural-language description."
+]
+
+UseCase uc_WeeklyReport "Weekly AI Ecosystem Report" : EntitiesInteropSendMessage [
+    primaryActor a_Administrator
+    supportingActors a_ProjectManager
+    triggeredBy ev_WeeklyReport
+    dataEntity ec_Project
+    actions aGenerateReport, aSendReport
+    description "Automatically generates and emails the weekly ecosystem report."
+]
+
+UseCase uc_ExportData "Export Data" : EntityReport [
+    primaryActor a_ProjectManager
+    dataEntity ec_Project
+    actions aExport
+    description "Exports project or task data to CSV."
+]
+
+/* ============================================================
+ * Views
+ * ============================================================ */
+View v_DataEntities "Data entities of the ecosystem" : DataEntityView [
+    e_User, e_Project, e_ProjectAssignment, e_ProjectStage,
+    e_Iteration, e_Milestone, e_ProjectTask, e_ChatFolder,
+    e_ChatSession, e_StreamChat, e_AgentTemplate, e_AgentTool,
+    e_AgentTask, e_AgentInstance
+    description "Principal persistent entities of the ecosystem."
+]
+
+View v_UseCases "Use cases of the ecosystem" : UseCaseView [
+    uc_ManageProjects, uc_ManageTasks, uc_ManageStages, uc_ManageIterations,
+    uc_AnalyzeRisks, uc_PrioritizeTasks, uc_SwitchAIModel,
+    uc_ArchiveChatSession, uc_GenerateReport, uc_GenerateDiagram,
+    uc_WeeklyReport, uc_ExportData
+    description "Principal actor-system interactions."
+]
+
+View v_Stakeholders "Stakeholders of the ecosystem" : StakeholderView [
+    stk_ProjectManager, stk_TeamMember, stk_ProductManager,
+    stk_Administrator, stk_LLMProvider, stk_OdooPlatform
+]
