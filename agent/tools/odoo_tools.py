@@ -172,9 +172,10 @@ def analyze_risks(project_name: str) -> str:
         f"  • Tasks without stage: {no_stage}\n"
         f"  • Estimated delay probability: {risk:.1f}%\n"
         f"  • Recommendation: "
-        + ("Prioritize stage definition." if risk > 70
-           else "Consider assigning stages." if risk > 40
-           else "Project is well organized.")
+        + ("HIGH RISK: Prioritize stage definition." if risk > 70
+           else "MEDIUM RISK: Consider assigning stages to remaining tasks." if risk > 20
+           else "LOW RISK: A few tasks still lack a stage." if risk > 0
+           else "NO RISK: Project is well organized.")
     )
 
 
