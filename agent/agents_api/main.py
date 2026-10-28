@@ -18,6 +18,7 @@ class ChatRequest(BaseModel):
     user_id: int = 0
     is_manager: bool = False
     model_name: str = 'groq'
+    system_prompt: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -42,6 +43,7 @@ def run_agent(req: ChatRequest):
         user_id=req.user_id,
         is_manager=effective_is_manager,
         model_name=req.model_name,
+        system_prompt=req.system_prompt,
     )
     return ChatResponse(response=result)
 

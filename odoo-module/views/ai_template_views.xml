@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ACTION: Action window for the menu -->
+        <record id="action_ai_template" model="ir.actions.act_window">
+            <field name="name">Agent Templates</field>
+            <field name="res_model">ai.template</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <!-- MENUS: Add Templates under the existing AI Ecosystem root -->
+
+        <!-- VIEWS: Tree View (List) -->
+        <record id="view_ai_template_tree" model="ir.ui.view">
+            <field name="name">ai.template.tree</field>
+            <field name="model">ai.template</field>
+            <field name="arch" type="xml">
+                <list string="Agent Templates">
+                    <field name="name"/>
+                    <field name="model_name"/>
+                    <field name="max_iterations"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- VIEWS: Form View (Detail) -->
+        <record id="view_ai_template_form" model="ir.ui.view">
+            <field name="name">ai.template.form</field>
+            <field name="model">ai.template</field>
+            <field name="arch" type="xml">
+                <form string="Agent Template">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="name" placeholder="e.g., Strict Project Manager"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="model_name"/>
+                                <field name="max_iterations"/>
+                            </group>
+                            <group>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Configuration">
+                                <group>
+                                    <field name="description" placeholder="What is this template used for?"/>
+                                </group>
+                                <separator string="System Prompt"/>
+                                <field name="prompt_template" placeholder="You are an AI assistant specialized in..." nolabel="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

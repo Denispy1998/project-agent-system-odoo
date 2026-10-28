@@ -29,12 +29,15 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq"):
+def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None):
     try:
+        payload = {"message": message, "user_id": user_id,
+                   "is_manager": is_manager, "model_name": model_name}
+        if system_prompt:
+            payload["system_prompt"] = system_prompt
         r = requests.post(
             AGENT_API_URL,
-            json={"message": message, "user_id": user_id,
-                  "is_manager": is_manager, "model_name": model_name},
+            json=payload,
             timeout=180,
         )
         r.raise_for_status()
@@ -535,6 +538,11 @@ class ChatbotController(http.Controller):
                     <h3>My Workspace</h3>
                     <p>{'Your managed projects' if is_manager else 'Your assigned tasks'}</p>
                 </a>
+                {'' if not is_manager else '''<a href="/odoo/action-meu_assistente_ia.action_ai_template" class="home-action">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>Manage Templates</h3>
+                    <p>Configure AI Agent Prompts</p>
+                </a>'''}
             </div>
         </div>
         """
@@ -553,7 +561,9 @@ class ChatbotController(http.Controller):
                       "<span style='background:#D97706;color:white;padding:4px 12px;"
                       "border-radius:20px;font-size:0.75rem;font-weight:700;'>TEAM MEMBER</span>")
 
-        return """<!DOCTYPE html>
+        templates = request.env['ai.template'].sudo().search([('active', '=', True)])
+        _t_opts = "".join([f'<option value="{t.id}">{t.name}</option>' for t in templates])
+        _html = """<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -733,11 +743,16 @@ class ChatbotController(http.Controller):
             </a>
             <i class="fas fa-robot robot"></i>
             <h2 id="sessionTitle">AI Assistant</h2>
-            """ + mode_badge + """
+            """
+        return (_html + mode_badge + """
             <select id="modelSelect" onchange="changeModel()">
                 <option value="groq">Groq · Qwen 3.8 27B</option>
                 <option value="openai">OpenAI · GPT-4o</option>
                 <option value="anthropic">Anthropic · Claude 3.5</option>
+            </select>
+            <select id="templateSelect" style="margin-left: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; background: white; color: #333; font-size: 0.9em;">
+                <option value="">-- No Template (Default) --</option>
+                {templates_html}
             </select>
         </div>
 
@@ -755,7 +770,7 @@ class ChatbotController(http.Controller):
     <script>
         let currentSessionId = null;
         let sessions = [];
-        const IS_MANAGER = """ + ("true" if is_manager else "false") + """;
+        const IS_MANAGER = """).replace('{templates_html}', _t_opts) + ("true" if is_manager else "false") + """;
 
         function renderWelcome() {
             const chat = document.getElementById('chatMessages');
@@ -901,7 +916,7 @@ class ChatbotController(http.Controller):
                 const res = await fetch('/assistente/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId })
+                    body: JSON.stringify({ mensagem: text, session_id: currentSessionId, template_id: document.getElementById('templateSelect').value })
                 });
                 const data = await res.json();
                 const reply = data.resposta || data.erro || 'No response';
@@ -1033,6 +1048,7 @@ class ChatbotController(http.Controller):
             data = json.loads(request.httprequest.data)
             pergunta = data.get('mensagem', '').strip()
             session_id = data.get('session_id')
+            template_id = data.get('template_id')
             if not pergunta:
                 return Response(json.dumps({'erro': 'Empty message'}), status=400)
 
@@ -1044,9 +1060,15 @@ class ChatbotController(http.Controller):
                 if session.exists():
                     model_name = session.model_name or "groq"
 
-            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name}")
+            system_prompt = None
+            if template_id:
+                tmpl = request.env['ai.template'].sudo().browse(int(template_id))
+                if tmpl.exists():
+                    system_prompt = tmpl.prompt_template
+
+            _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

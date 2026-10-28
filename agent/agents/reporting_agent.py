@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Reporting Agent (CrewAI 0.175.0 compatible)."""
 from crewai import Agent
-from tools.odoo_tools import list_projects, list_tasks, analyze_risks
+from tools.odoo_tools import project_summary, analyze_risks, list_tasks
 
-
-def get_reporting_agent(llm) -> Agent:
+def get_reporting_agent(llm, system_prompt=None) -> Agent:
+    default = "You generate concise project status reports. Reply in English."
+    guardrail = "You must ONLY answer questions related to project management and Odoo. If the user asks off-topic questions, politely decline."
+    backstory = (system_prompt + "\n\n" if system_prompt else "") + default + "\n\n" + guardrail
+    
     return Agent(
-        role="Reporting Specialist",
-        goal="Generate project status reports and summaries.",
-        backstory=(
-            "You generate concise project reports. Use the provided tools "
-            "(list_projects, list_tasks, analyze_risks). Reply in English."
-        ),
-        tools=[list_projects, list_tasks, analyze_risks],
-        llm=llm,
-        verbose=True,
-        allow_delegation=False,
-        max_iter=1,
-        max_rpm=10,
+        role="Reporting Agent", goal="Generate status reports and risk analyses.",
+        backstory=backstory,
+        tools=[project_summary, analyze_risks, list_tasks],
+        llm=llm, verbose=True, allow_delegation=False, max_iter=1,
     )

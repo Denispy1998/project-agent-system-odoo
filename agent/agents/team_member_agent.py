@@ -1,27 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Team Member Agent (read-only)."""
 from crewai import Agent
 from tools.odoo_tools import (
-    list_projects, list_tasks, list_stages,
-    analyze_risks, prioritize_tasks, project_summary,
+    list_projects, list_tasks, list_stages, analyze_risks,
+    prioritize_tasks, project_summary,
 )
 
-
-def get_team_member_agent(llm) -> Agent:
+def get_team_member_agent(llm, system_prompt=None) -> Agent:
+    default = (
+        "You have read-only access. Call exactly ONE tool per request. "
+        "Return the tool's output VERBATIM. Reply in English."
+    )
+    guardrail = "You must ONLY answer questions related to project management and Odoo. If the user asks off-topic questions, politely decline."
+    backstory = (system_prompt + "\n\n" if system_prompt else "") + default + "\n\n" + guardrail
+    
     return Agent(
-        role="Team Member",
-        goal="Consult projects, tasks, stages, risks, and priorities.",
-        backstory=(
-            "You are a read-only assistant. Call at most ONE tool per request. "
-            "Return the tool output VERBATIM. Reply in English."
-        ),
+        role="Team Member", goal="Read project data from Odoo.",
+        backstory=backstory,
         tools=[
-            list_projects, list_tasks, list_stages,
-            analyze_risks, prioritize_tasks, project_summary,
+            list_projects, list_tasks, list_stages, analyze_risks,
+            prioritize_tasks, project_summary,
         ],
-        llm=llm,
-        verbose=True,
-        allow_delegation=False,
-        max_iter=1,
-        max_rpm=10,
+        llm=llm, verbose=True, allow_delegation=False, max_iter=1,
     )

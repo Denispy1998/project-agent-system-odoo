@@ -564,3 +564,95 @@ def verify_user_is_manager(user_id):
     result = _user_is_manager_via_xmlrpc(user_id)
     _MANAGER_CACHE[user_id] = (now + _MANAGER_CACHE_TTL, result)
     return result
+
+@tool("list_agent_templates")
+def list_agent_templates() -> str:
+    """List all active AI Agent templates available in Odoo."""
+    try:
+        ids = _call('ai.template', 'search', [[('active', '=', True)]])
+        if not ids:
+            return "No active templates found."
+        records = _call('ai.template', 'read', [ids], {'fields': ['name', 'model_name', 'max_iterations']})
+        
+        result = "Available Agent Templates:\n"
+        for r in records:
+            result += f"  • {r['name']} (LLM: {r['model_name']}, Max Iter: {r['max_iterations']})\n"
+        return result
+    except Exception as e:
+        return f"ERROR: Could not fetch templates: {e}"
+
+@tool("setup_agile_project")
+def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
+    """Creates a complete Agile project: 1 project, 3 standard stages (To Do, In Progress, Done), and tasks.
+    tasks_csv should be a comma-separated string of task names (e.g., "Design, Dev, Test")."""
+    try:
+        # 0. Verificação de Idempotência (Evitar duplicados)
+        existing = _call('project.project', 'search', [[('name', '=', project_name)]])
+        if existing:
+            return f"SUCCESS: Project '{project_name}' already exists (ID {existing[0]}) with all stages and tasks ready. Action complete. Do NOT retry."
+
+        # 1. Create Project
+        proj_id = _call('project.project', 'create', [{'name': project_name}])
+        if not proj_id:
+            return "ERROR: Could not create project."
+        
+        # 2. Helpers para Stage (reutilizar se existir)
+        def get_stage(name, seq):
+            ids = _call('project.task.type', 'search', [[('name', '=', name)]])
+            if ids:
+                return ids[0]
+            return _call('project.task.type', 'create', [{'name': name, 'sequence': seq}])
+            
+        stage_todo = get_stage('To Do', 1)
+        stage_prog = get_stage('In Progress', 2)
+        stage_done = get_stage('Done', 3)
+        
+        # 3. Process Tasks
+        task_list = [t.strip() for t in tasks_csv.split(',') if t.strip()]
+        if not task_list:
+            task_list = ["Design", "Development", "Testing"] # Fallback padrão
+            
+        created_tasks = []
+        for t_name in task_list:
+            _call('project.task', 'create', [{
+                'name': t_name,
+                'project_id': proj_id,
+                'stage_id': stage_todo
+            }])
+            created_tasks.append(t_name)
+
+        return f"SUCCESS: Project '{project_name}' (ID {proj_id}) created with 3 stages and tasks: {', '.join(created_tasks)}."
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+
+@tool("bulk_move_tasks")
+def bulk_move_tasks(project_name: str, from_stage: str, to_stage: str) -> str:
+    """Moves ALL tasks from one stage to another in a project instantly.
+    Use this for elaborate requests like 'move all tasks from To Do to In Progress in project X'."""
+    proj_id = _find_project(project_name)
+    if not proj_id:
+        return f"ERROR: Project '{project_name}' not found."
+        
+    try:
+        # Find from_stage
+        from_ids = _call('project.task.type', 'search', [[('name', '=', from_stage), ('project_ids', 'in', [proj_id])]])
+        if not from_ids:
+            return f"ERROR: Stage '{from_stage}' not found in project."
+        from_id = from_ids[0]
+        
+        # Find to_stage
+        to_ids = _call('project.task.type', 'search', [[('name', '=', to_stage), ('project_ids', 'in', [proj_id])]])
+        if not to_ids:
+            return f"ERROR: Stage '{to_stage}' not found in project."
+        to_id = to_ids[0]
+        
+        # Find tasks in from_stage
+        task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id), ('stage_id', '=', from_id)]])
+        if not task_ids:
+            return f"INFO: No tasks found in stage '{from_stage}'."
+            
+        # Move them
+        _call('project.task', 'write', [task_ids, {'stage_id': to_id}])
+        return f"SUCCESS: Moved {len(task_ids)} tasks from '{from_stage}' to '{to_stage}' in project '{project_name}'."
+    except Exception as e:
+        return f"ERROR: {str(e)}"

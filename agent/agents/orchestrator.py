@@ -124,6 +124,7 @@ def run_orchestrator(
     user_id: Optional[int] = None,
     is_manager: bool = False,
     model_name: str = "groq",
+    system_prompt: Optional[str] = None,
 ) -> str:
     # === Permission guard: block write intents for team members ===
     # KEEP IN SYNC with the write verbs used by router.py patterns.
@@ -185,16 +186,16 @@ def run_orchestrator(
             agent_type = _detect_agent(user_message, is_manager)
 
             if agent_type == "diagram":
-                agent = get_diagram_agent(llm)
+                agent = get_diagram_agent(llm, system_prompt)
                 task_desc = f"Generate a Mermaid diagram for: {user_message}"
             elif agent_type == "reporting":
-                agent = get_reporting_agent(llm)
+                agent = get_reporting_agent(llm, system_prompt)
                 task_desc = f"Generate a status report for: {user_message}"
             elif agent_type == "project_manager":
-                agent = get_project_manager_agent(llm)
+                agent = get_project_manager_agent(llm, system_prompt)
                 task_desc = user_message
             else:
-                agent = get_team_member_agent(llm)
+                agent = get_team_member_agent(llm, system_prompt)
                 task_desc = user_message
 
             task = Task(
