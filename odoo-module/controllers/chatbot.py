@@ -472,10 +472,10 @@ class ChatbotController(http.Controller):
             .home-stat h3 {{ font-size: 2.2rem; color: #714B67; margin: 0 0 6px 0; }}
             .home-stat p {{ color: #6b7280; font-size: 0.9rem; }}
             .home-actions {{
-                display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+                display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px;
             }}
             .home-action {{
-                background: white; border-radius: 20px; padding: 32px 20px;
+                background: white; border-radius: 20px; padding: 25px 10px;
                 text-align: center; text-decoration: none; color: inherit;
                 box-shadow: 0 4px 16px rgba(0,0,0,0.07);
                 transition: all 0.24s ease; border: 2px solid transparent;
