@@ -4,7 +4,7 @@ from tools.odoo_tools import (
     list_projects, list_tasks, list_stages, analyze_risks,
     prioritize_tasks, project_summary, create_project, add_task,
     create_stage, move_single_task, move_tasks, delete_task,
-    delete_stage, delete_project, setup_agile_project, bulk_move_tasks,
+    delete_stage, delete_project, setup_agile_project, bulk_move_tasks, simulate_delay,
 )
 
 def get_project_manager_agent(llm, system_prompt=None) -> Agent:
@@ -26,7 +26,7 @@ CRITICAL RULES:
             list_projects, list_tasks, list_stages, analyze_risks,
             prioritize_tasks, project_summary, create_project, add_task,
             create_stage, move_single_task, move_tasks, delete_task,
-            delete_stage, delete_project, setup_agile_project, bulk_move_tasks,
+            delete_stage, delete_project, setup_agile_project, bulk_move_tasks, simulate_delay,
         ],
         llm=llm, verbose=True, allow_delegation=False, max_iter=1, max_rpm=10,
     )

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from crewai import Agent
-from tools.odoo_tools import analyze_risks, list_tasks
+from tools.odoo_tools import analyze_risks, list_tasks, simulate_delay, scan_project_risks
 
 def get_risk_agent(llm, system_prompt=None) -> Agent:
     default = (
@@ -15,6 +15,6 @@ def get_risk_agent(llm, system_prompt=None) -> Agent:
         role="Risk Auditor", 
         goal="Evaluate project risks and suggest mitigations.",
         backstory=backstory,
-        tools=[analyze_risks, list_tasks],
+        tools=[analyze_risks, list_tasks, simulate_delay, scan_project_risks],
         llm=llm, verbose=True, allow_delegation=False, max_iter=1,
     )

@@ -47,7 +47,7 @@ class ProjectProject(models.Model):
         lines.append("</ul>")
         lines.append(
             "<p style='color:#9ca3af;font-size:0.85em;'>"
-            "Generated automatically by AI Project Management Ecosystem v2.6.2"
+            "Generated automatically by AI Project Management Ecosystem v2.9.0"
             "</p>"
         )
         body_html = "".join(lines)

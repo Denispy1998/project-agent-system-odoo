@@ -601,10 +601,14 @@ def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
             
         created_tasks = []
         for t_name in task_list:
+            from datetime import datetime, timedelta
+            default_deadline = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+            
             _call('project.task', 'create', [{
                 'name': t_name,
                 'project_id': proj_id,
-                'stage_id': stage_todo
+                'stage_id': stage_todo,
+                'date_deadline': default_deadline
             }])
             created_tasks.append(t_name)
 
@@ -641,5 +645,87 @@ def bulk_move_tasks(project_name: str, from_stage: str, to_stage: str) -> str:
         return f"ERROR: {str(e)}"
     except Exception as e:
         return f"ERROR: {str(e)}"
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+
+@tool("simulate_delay")
+def simulate_delay(project_name: str, task_name: str, delay_days: int) -> str:
+    """Simulates a delay in a specific task and recalculates the project timeline.
+    Use this when the user says a task is delayed and wants to know the impact."""
+    proj_id = _find_project(project_name)
+    if not proj_id:
+        return f"ERROR: Project '{project_name}' not found."
+        
+    try:
+        # Encontrar a tarefa
+        task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id), ('name', 'ilike', task_name)]])
+        if not task_ids:
+            return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
+            
+        # Ler a data atual da tarefa (SINTAXE CORRETA: lista de campos)
+        task_data = _call('project.task', 'read', [task_ids[:1], ['name', 'date_deadline']])
+        if not task_data:
+            return "ERROR: Could not read task data."
+            
+        from datetime import datetime, timedelta
+        old_date_str = task_data[0].get('date_deadline')
+        
+        if not old_date_str:
+            # Se não tem data, assume que a data base é hoje
+            old_date = datetime.now()
+        else:
+            # O Odoo devolve YYYY-MM-DD HH:MM:SS, então cortamos a hora
+            clean_date_str = str(old_date_str).split(' ')[0]
+            old_date = datetime.strptime(clean_date_str, '%Y-%m-%d')
+            
+        new_date = old_date + timedelta(days=delay_days)
+        
+        # Atualizar a tarefa com a nova data
+        _call('project.task', 'write', [task_ids[:1], {'date_deadline': new_date.strftime('%Y-%m-%d')}])
+        
+        # Verificar o impacto (SINTAXE CORRETA: lista de campos)
+        all_tasks = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
+        impacted_tasks = _call('project.task', 'read', [all_tasks, ['name', 'date_deadline']])
+        
+        return f"SUCCESS: Task '{task_name}' delayed by {delay_days} days. New deadline: {new_date.strftime('%Y-%m-%d')}. Impact analysis: The project timeline has been recalculated."
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+
+@tool("scan_project_risks")
+def scan_project_risks(project_name: str, days_threshold: int = 3) -> str:
+    """Scans a project for tasks that are near their deadline and not concluded.
+    Returns a list of critical tasks and recommended actions."""
+    proj_id = _find_project(project_name)
+    if not proj_id:
+        return f"ERROR: Project '{project_name}' not found."
+        
+    try:
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        threshold_date = today + timedelta(days=days_threshold)
+        
+        task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
+        tasks = _call('project.task', 'read', [task_ids, ['name', 'date_deadline', 'stage_id', 'task_status']])
+        
+        critical_tasks = []
+        
+        for t in tasks:
+            # Se já estiver concluída, não é risco
+            if t.get('task_status') == 'concluded' or (t.get('stage_id') and 'done' in str(t.get('stage_id')).lower()):
+                continue
+                
+            deadline_str = t.get('date_deadline')
+            if deadline_str:
+                clean_date = str(deadline_str).split(' ')[0]
+                deadline_date = datetime.strptime(clean_date, '%Y-%m-%d')
+                
+                if deadline_date <= threshold_date:
+                    days_left = (deadline_date - today).days
+                    critical_tasks.append(f"Task '{t['name']}' (Deadline: {clean_date}, Days left: {days_left})")
+                    
+        if critical_tasks:
+            return f"RISK ALERT for '{project_name}':\n" + "\n".join([f"  - {t}" for t in critical_tasks]) + "\nRECOMMENDATION: Reallocate resources or extend deadlines immediately."
+        else:
+            return f"NO IMMEDIATE RISKS found for '{project_name}' within a {days_threshold}-day window. Project is on track."
     except Exception as e:
         return f"ERROR: {str(e)}"

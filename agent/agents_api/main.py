@@ -10,7 +10,7 @@ from tools.odoo_tools import verify_user_is_manager, _call as _odoo_call
 
 app = FastAPI(title='Project Agent API')
 
-API_VERSION = '2.7.3'
+API_VERSION = '2.9.0'
 
 
 class ChatRequest(BaseModel):
