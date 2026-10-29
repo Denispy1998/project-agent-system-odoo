@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="AI Ecosystem Logo" width="120"/>
   <h1>🤖 AI Project Management Ecosystem (v2.8.0)</h1>
   <p><strong>Planeamento, Execução e Tomada de Decisão com Agentes de IA Integrados no Odoo 19</strong></p>
 
@@ -36,16 +35,7 @@ O ecossistema segue uma arquitetura de três camadas, complementada por um route
 2. **Orquestração (FastAPI + CrewAI):** Microserviço que interpreta a linguagem natural e coordena os agentes.
 3. **Dados (PostgreSQL 18):** Persistência nativa do Odoo e estado das sessões de IA.
 
-<div align="center">
-  <img src="docs/images/arquitetura.png" alt="Arquitetura do Ecossistema" width="800"/>
-  <p><em>Figura 1: Arquitetura Geral do Ecossistema Multiagente.</em></p>
-</div>
-
-### 🔄 Fluxo de Interação
-<div align="center">
-  <img src="docs/images/sequencia.png" alt="Diagrama de Sequência" width="800"/>
-  <p><em>Figura 2: Diagrama de Sequência da Interação entre Agentes.</em></p>
-</div>
+> 📌 *Os diagramas detalhados da arquitetura (Figuras 1 e 2 do relatório PIC2) estão disponíveis no documento oficial submetido no Fénix.*
 
 ---
 
