@@ -583,34 +583,21 @@ def list_agent_templates() -> str:
 
 @tool("setup_agile_project")
 def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
-    """Creates a complete Agile project: 1 project, 3 standard stages (To Do, In Progress, Done), and tasks.
-    tasks_csv should be a comma-separated string of task names (e.g., "Design, Dev, Test")."""
+    """Creates a complete Agile project: 1 project, 3 standard stages, and tasks."""
     try:
-        # 0. Verificação de Idempotência (Evitar duplicados)
-        existing = _call('project.project', 'search', [[('name', '=', project_name)]])
+        existing = _call('project.project', 'search', [[('name', 'ilike', project_name)]])
         if existing:
-            return f"SUCCESS: Project '{project_name}' already exists (ID {existing[0]}) with all stages and tasks ready. Action complete. Do NOT retry."
-
-        # 1. Create Project
-        proj_id = _call('project.project', 'create', [{'name': project_name}])
-        if not proj_id:
-            return "ERROR: Could not create project."
-        
-        # 2. Helpers para Stage (reutilizar se existir)
-        def get_stage(name, seq):
-            ids = _call('project.task.type', 'search', [[('name', '=', name)]])
-            if ids:
-                return ids[0]
-            return _call('project.task.type', 'create', [{'name': name, 'sequence': seq}])
+            return f"SUCCESS: Project '{project_name}' is already set up (ID {existing[0]}). No new data was created."
             
-        stage_todo = get_stage('To Do', 1)
-        stage_prog = get_stage('In Progress', 2)
-        stage_done = get_stage('Done', 3)
+        proj_id = _call('project.project', 'create', [{'name': project_name}])
         
-        # 3. Process Tasks
+        stage_todo = _call('project.task.type', 'create', [{'name': 'To Do', 'sequence': 1, 'project_ids': [(4, proj_id)]}])
+        stage_prog = _call('project.task.type', 'create', [{'name': 'In Progress', 'sequence': 2, 'project_ids': [(4, proj_id)]}])
+        stage_done = _call('project.task.type', 'create', [{'name': 'Done', 'sequence': 3, 'project_ids': [(4, proj_id)]}])
+        
         task_list = [t.strip() for t in tasks_csv.split(',') if t.strip()]
         if not task_list:
-            task_list = ["Design", "Development", "Testing"] # Fallback padrão
+            task_list = ["Design", "Development", "Testing"]
             
         created_tasks = []
         for t_name in task_list:
@@ -621,38 +608,38 @@ def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
             }])
             created_tasks.append(t_name)
 
-        return f"SUCCESS: Project '{project_name}' (ID {proj_id}) created with 3 stages and tasks: {', '.join(created_tasks)}."
+        return f"SUCCESS: Project '{project_name}' was CREATED FROM SCRATCH (ID {proj_id}) with 3 stages and tasks: {', '.join(created_tasks)}."
     except Exception as e:
         return f"ERROR: {str(e)}"
 
 @tool("bulk_move_tasks")
 def bulk_move_tasks(project_name: str, from_stage: str, to_stage: str) -> str:
-    """Moves ALL tasks from one stage to another in a project instantly.
-    Use this for elaborate requests like 'move all tasks from To Do to In Progress in project X'."""
+    """Moves ALL tasks from one stage to another in a project instantly."""
     proj_id = _find_project(project_name)
     if not proj_id:
         return f"ERROR: Project '{project_name}' not found."
         
     try:
-        # Find from_stage
-        from_ids = _call('project.task.type', 'search', [[('name', '=', from_stage), ('project_ids', 'in', [proj_id])]])
-        if not from_ids:
-            return f"ERROR: Stage '{from_stage}' not found in project."
-        from_id = from_ids[0]
+        # Usar search_read para evitar o KeyError: 'fields'
+        stages_data = _call('project.task.type', 'search_read', [[('project_ids', 'in', [proj_id])], ['name']])
         
-        # Find to_stage
-        to_ids = _call('project.task.type', 'search', [[('name', '=', to_stage), ('project_ids', 'in', [proj_id])]])
-        if not to_ids:
-            return f"ERROR: Stage '{to_stage}' not found in project."
-        to_id = to_ids[0]
+        from_id, to_id = None, None
+        for s in stages_data:
+            if s['name'].lower() == from_stage.lower(): from_id = s['id']
+            if s['name'].lower() == to_stage.lower(): to_id = s['id']
+            
+        if not from_id: return f"ERROR: Stage '{from_stage}' not found in project '{project_name}'."
+        if not to_id: return f"ERROR: Stage '{to_stage}' not found in project '{project_name}'."
         
-        # Find tasks in from_stage
         task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id), ('stage_id', '=', from_id)]])
         if not task_ids:
-            return f"INFO: No tasks found in stage '{from_stage}'."
+            return f"SUCCESS: No tasks found in stage '{from_stage}' for project '{project_name}'. Nothing was moved."
             
-        # Move them
         _call('project.task', 'write', [task_ids, {'stage_id': to_id}])
         return f"SUCCESS: Moved {len(task_ids)} tasks from '{from_stage}' to '{to_stage}' in project '{project_name}'."
+    except Exception as e:
+        return f"ERROR: {str(e)}"
+    except Exception as e:
+        return f"ERROR: {str(e)}"
     except Exception as e:
         return f"ERROR: {str(e)}"
