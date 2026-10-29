@@ -8,6 +8,8 @@ from crewai import Crew, Task, LLM
 from dotenv import load_dotenv
 
 from agents.project_manager_agent import get_project_manager_agent
+from agents.planning_agent import get_planning_agent
+from agents.risk_agent import get_risk_agent
 from agents.team_member_agent import get_team_member_agent
 from agents.reporting_agent import get_reporting_agent
 from agents.diagram_agent import get_diagram_agent
@@ -185,9 +187,18 @@ def run_orchestrator(
             llm = get_llm(model_name)
             agent_type = _detect_agent(user_message, is_manager)
 
+            # Lógica de seleção baseada no Template (System Prompt)
+            sp_lower = (system_prompt or "").lower()
+            
             if agent_type == "diagram":
                 agent = get_diagram_agent(llm, system_prompt)
                 task_desc = f"Generate a Mermaid diagram for: {user_message}"
+            elif "planner" in sp_lower or "planeamento" in sp_lower:
+                agent = get_planning_agent(llm, system_prompt)
+                task_desc = f"Create a project plan for: {user_message}"
+            elif "auditor" in sp_lower or "risco" in sp_lower:
+                agent = get_risk_agent(llm, system_prompt)
+                task_desc = f"Evaluate risks for: {user_message}"
             elif agent_type == "reporting":
                 agent = get_reporting_agent(llm, system_prompt)
                 task_desc = f"Generate a status report for: {user_message}"
