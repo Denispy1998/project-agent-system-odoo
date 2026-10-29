@@ -1,348 +1,130 @@
-# Project Agent System — Odoo Multi-Agent AI Ecosystem
+<div align="center">
+  <img src="docs/images/logo.png" alt="AI Ecosystem Logo" width="120"/>
+  <h1>🤖 AI Project Management Ecosystem (v2.8.0)</h1>
+  <p><strong>Planeamento, Execução e Tomada de Decisão com Agentes de IA Integrados no Odoo 19</strong></p>
 
-**Version 2.6.2** (RBAC + task lifecycle + Burndown/Velocity + certification)
-
-[![Lint](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/lint.yml)
-[![Pytest](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml/badge.svg)](https://github.com/Denispy1998/project-agent-system-odoo/actions/workflows/pytest.yml)
-**Author:** Denilson Fragoso Da Silva Santos
-**Institution:** Instituto Superior Técnico, University of Lisbon
-**Course:** MEIC — Mestrado em Engenharia Informática e de Computadores
-**Year:** 2026/2027
-
----
-
-## Overview
-
-An AI multi-agent ecosystem integrated with Odoo 19 for project management. It provides a chatbot, dashboards, weekly automated reports, and role-based permissions for Managers and Team Members.
-
-The system uses CrewAI agents orchestrated through a FastAPI microservice, communicating with Odoo via XML-RPC. The default LLM is `groq/qwen/qwen3.8-27b` (`max_tokens=512`), with optional support for OpenAI and Anthropic models. When the LLM rate limit is hit, the orchestrator recovers the last executed tool output so idempotent write operations are never lost.
+  ![Odoo](https://img.shields.io/badge/Odoo-19.0-714B67?style=for-the-badge&logo=odoo)
+  ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)
+  ![CrewAI](https://img.shields.io/badge/CrewAI-0.175-FF6B6B?style=for-the-badge)
+  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=for-the-badge&logo=postgresql)
+  ![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions)
+  ![Status](https://img.shields.io/badge/Status-CERTIFIED_30%2F30-success?style=for-the-badge)
+</div>
 
 ---
 
-## Architecture
+## 📌 Sobre o Projeto
+Este repositório contém o ecossistema multiagente de Inteligência Artificial desenvolvido no âmbito da dissertação de Mestrado (MEIC) no Instituto Superior Técnico. O sistema integra um agente conversacional (CrewAI + Groq) com o ERP Odoo 19, permitindo a gestão de projetos através de linguagem natural, com elevada performance, segurança e governança.
 
-```
-Browser -> Odoo (chatbot.py) -> HTTP :8001 -> FastAPI (agents_api)
-       |                                            |
-   Odoo DB <- odoo_tools.py (XML-RPC)          CrewAI -> LLM (Groq)
-```
-
-### Components
-
-- **Odoo 19 module `meu_assistente_ia`**: web UI, chat sessions, dashboards, PDF/CSV export, permissions, cron.
-- **FastAPI microservice** (`agents_api`): exposes `/agent/run` and `/health`.
-- **CrewAI orchestrator**: routes requests to specialized agents (Project Manager, Team Member, Reporting, Diagram).
-- **Odoo tools** (`odoo_tools.py`): 17 idempotent read/write tools via XML-RPC.
-- **LLM**: Groq (default), optional OpenAI / Anthropic.
+### 🚀 Principais Funcionalidades (v2.8.0)
+- **Hybrid Router:** Comandos simples resolvidos por Regex (0.05s) e comandos complexos delegados ao LLM (2-5s).
+- **17+ Ferramentas Idempotentes:** CRUD de projetos, tarefas e stages; análise de riscos; diagramas Mermaid; Macros de engenharia (ex: `setup_agile_project`).
+- **BackOffice Nativo no Odoo:** Gestão dinâmica de *System Prompts* (Templates) e instanciação de agentes.
+- **Colaboração Multiagente:** 6 agentes especializados (Project Manager, Team Member, Reporting, Diagram, **Planning**, **Risk**).
+- **Segurança RBAC (2 Camadas):** Verificação de permissões no Odoo e *server-side* no FastAPI.
+- **Automação:** Relatório semanal automático por email (Cron Job).
+- **Interface Otimizada:** Chat multi-sessão, dashboards interativos com Chart.js e exportação PDF/CSV.
 
 ---
 
-## Features
+## 🏗️ Arquitetura do Sistema
 
-- **Hybrid Router**: local regex classifier handles ~90% of commands in
-  under 0.5 s, with zero LLM calls and zero rate-limit consumption;
-  unknown intents fall back to CrewAI → LLM
-- **Dynamic Mermaid diagrams**: the LLM generates the diagram body
-  (flowchart, sequence, ER, class, state, Gantt, pie) with a weighted
-  keyword classifier for kind detection and a deterministic fallback
-  on LLM failure
-- **Role-based access**: *Gestor de Projeto* (RW) vs *Membro de Equipa*
-  (R-only) enforced both at the Odoo `ir.model.access` layer and at the
-  chat orchestrator level
-- **Task lifecycle**: `project.task.task_status` (In Backlog / In Progress /
-  Concluded); setting it to *Concluded* auto-fills `date_end`, reverting
-  clears it. Editable via:
-  * Odoo form (radio widget, tracks changes in the chatter)
-  * Chat: `set task <name> in <project> to <status>`
-- **17 idempotent tools** (was 14), including `set_task_status` with
-  natural-language synonyms (done/finished → concluded, doing/wip →
-  in_progress, todo/backlog → in_backlog)
-- **Dashboard KPIs**: Lead Time (avg days for concluded tasks) and
-  Activity (tasks updated in the last 7 days)
-- Multi-session chat with context (`ai.session`)
-- Model selector (Groq, optional OpenAI/Anthropic)
-- Role-based permissions: **Manager** (read/write) vs **Team Member** (read-only)
-- Global dashboard with Chart.js and per-project sub-dashboards
-- PDF report with branding and risk analysis
-- CSV export (semicolon separator `;`)
-- 17 idempotent tools (read + write)
-- Weekly AI Ecosystem Report via cron and SMTP
-- Copyright footer on all pages
-- Multi-language ready (English labels)
+O ecossistema segue uma arquitetura de três camadas, complementada por um router híbrido interno:
+
+1. **Interface (Odoo 19):** UI em HTML5/CSS3/JS, chat multi-sessão e dashboards.
+2. **Orquestração (FastAPI + CrewAI):** Microserviço que interpreta a linguagem natural e coordena os agentes.
+3. **Dados (PostgreSQL 18):** Persistência nativa do Odoo e estado das sessões de IA.
+
+<div align="center">
+  <img src="docs/images/arquitetura.png" alt="Arquitetura do Ecossistema" width="800"/>
+  <p><em>Figura 1: Arquitetura Geral do Ecossistema Multiagente.</em></p>
+</div>
+
+### 🔄 Fluxo de Interação
+<div align="center">
+  <img src="docs/images/sequencia.png" alt="Diagrama de Sequência" width="800"/>
+  <p><em>Figura 2: Diagrama de Sequência da Interação entre Agentes.</em></p>
+</div>
 
 ---
 
-## Tech Stack
+## 🛠️ Tecnologias Utilizadas
 
-- Python 3.12
-- Odoo Community 19
+| Componente | Tecnologia | Versão | Justificação |
+| :--- | :--- | :--- | :--- |
+| **Plataforma** | Odoo Community | 19 | ERP com módulo de projetos e XML-RPC |
+| **Orquestração** | CrewAI | 0.175.0 | Framework multiagente com ferramentas |
+| **LLM Padrão** | Groq (qwen3.8-27b) | max_tokens=512 | Rápido, gratuito e de alta performance |
+| **Microserviço** | FastAPI | 0.115.6 | Framework web de alto desempenho |
+| **Backend** | Python | 3.12 | Linguagem do Odoo e CrewAI |
+| **Base de Dados** | PostgreSQL | 18 | Sistema de gestão do Odoo |
+| **Frontend** | HTML5, CSS3, JS | — | Interface leve e responsiva |
+| **Diagramas** | Mermaid.js | — | Renderização SVG no chat |
+| **CI/CD** | GitHub Actions | — | Lint + Pytest automáticos |
+
+---
+
+## 🚦 Como Executar o Projeto
+
+### Pré-requisitos
+- WSL2 (Ubuntu 22.04+) ou Linux
+- Odoo 19 instalado (`/opt/odoo/odoo19`)
 - PostgreSQL 18
-- FastAPI + Uvicorn
-- CrewAI 0.175.0
-- LangChain 0.3.27
-- LiteLLM 1.74.9
-- LLM: `groq/qwen/qwen3.8-27b` (default, `max_tokens=512`)
-- Agents: `max_iter=1` + `max_rpm=10` per agent (avoids retry storms on rate limits)
-- Chart.js
-- ReportLab
+- Python 3.12 (venv_agents)
 
----
-
-## Repository Structure
-
-```
-.
-|-- agent/
-|   |-- agents/               # CrewAI agents and orchestrator
-|   |-- agents_api/           # FastAPI microservice
-|   |-- config/
-|   |-- tools/                # Odoo XML-RPC tools
-|   `-- setup_users.py
-|-- odoo-module/              # Odoo module meu_assistente_ia
-|   |-- controllers/
-|   |-- data/
-|   |-- models/
-|   |-- security/
-|   |-- static/
-|   `-- views/
-|-- docker/                 # Reference Dockerfiles (not tested end-to-end)
-|-- docs/
-|   `-- specs/                # RSL/ASL specifications and diagrams
-|-- .env.example
-|-- LICENSE
-`-- README.md
-```
-
----
-
-## Prerequisites
-
-- Odoo 19 installed and running
-- PostgreSQL 18
-- Python 3.12
-- Groq API key (or OpenAI/Anthropic)
-- Odoo database with `project` module installed
-
----
-
-## Installation
-
-### 1. Clone the repository
-
+### Instalação e Arranque
 ```bash
+# 1. Clonar o repositório
 git clone https://github.com/Denispy1998/project-agent-system-odoo.git
 cd project-agent-system-odoo
-```
 
-### 2. Create virtual environment
-
-```bash
+# 2. Configurar o ambiente virtual (venv_agents)
 python3.12 -m venv venv_agents
 source venv_agents/bin/activate
-pip install -r agent/agents_api/requirements.txt
-```
+pip install -r requirements.txt
 
-### 3. Configure environment
+# 3. Configurar as variáveis de ambiente (.env)
+# (Adicionar GROQ_API_KEY, ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASSWORD)
 
-```bash
-cp .env.example .env
-nano .env
-```
-
-Required variables:
-
-```env
-GROQ_API_KEY=your_groq_key_here
-ODOO_URL=http://localhost:8069
-ODOO_DB=odoo
-ODOO_USER=admin
-ODOO_PASSWORD=admin
-DEFAULT_MODEL=groq
-```
-
-Optional:
-
-```env
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-```
-
-### 4. Install Odoo module
-
-- Copy `odoo-module/` to your Odoo addons path, e.g.:
-
-  ```bash
-  cp -r odoo-module/ /opt/odoo/odoo19/addons/meu_assistente_ia
-  ```
-
-- Restart Odoo and update the module list.
-- Install **Meu Assistente IA**.
-
-### 5. Start FastAPI microservice
-
-```bash
-cd agent
-uvicorn agents_api.main:app --host 127.0.0.1 --port 8001
-```
-
-Or use the provided scripts if available:
-
-```bash
+# 4. Iniciar os serviços
 bash ~/start_all.sh
 ```
 
 ---
 
-## Usage
+## 🧪 Testes e Certificação
 
-- Open Odoo: `http://localhost:8069/assistente`
-- Chat with the AI assistant, select model, manage sessions.
-- View global dashboard, projects, tasks, risks.
-- Export PDF/CSV reports.
-- Managers can create/update/delete; Team Members are read-only.
+O ecossistema é validado de forma contínua através de:
+- **44 Testes Unitários:** Lógica do router, ferramentas e helpers.
+- **16 Testes de Integração (Smoke Test):** UI, API, RBAC e LLM.
+- **30 Pontos de Certificação End-to-End:** Validação completa do sistema em execução.
+- **Testes Enterprise:** Validação de idempotência das Macros e colaboração entre agentes.
 
----
-
-## API Endpoints
-
-### Health check
-
-```http
-GET /health
-```
-
-Response:
-
-```json
-{"status":"ok"}
-```
-
-### Run agent
-
-```http
-POST /agent/run
-Content-Type: application/json
-```
-
-Payload:
-
-```json
-{
-  "message": "list all projects",
-  "user_id": 1,
-  "is_manager": true,
-  "model_name": "groq"
-}
+Para executar a certificação:
+```bash
+source venv_agents/bin/activate
+python tests/certify.py
 ```
 
 ---
 
-## Agent Tools (17 idempotent)
+## 📚 Documentação Adicional
 
-**Read (6):**
-
-- `list_projects`
-- `list_tasks`
-- `list_stages`
-- `analyze_risks`
-- `prioritize_tasks`
-- `project_summary`
-
-**Write (10):**
-
-- `create_project`
-- `add_task`
-- `create_stage`
-- `move_single_task`
-- `move_tasks`
-- `move_all_tasks`
-- `set_task_status`
-- `delete_task`
-- `delete_stage`
-- `delete_project`
-
-**Diagram (1):**
-
-- `generate_mermaid_diagram` (7 kinds: flowchart, sequence, er, class,
-  state, gantt, pie — dynamic via LLM with deterministic fallback)
+- [Especificações RSL v3.2 e ASL v3.3](docs/specs/)
+- [Guia de Limitações (L1-L8)](docs/LIMITATIONS.md)
+- [Casos de Estudo Técnicos (T1-T11)](docs/CHANGELOG_TECHNICAL.md)
 
 ---
 
-## Permissions
+## 👨‍💻 Autor
 
-- **Manager:** full read/write access.
-- **Team Member:** read-only. Write attempts return `DENIED: ...`.
-
----
-
-## Weekly Report
-
-A cron job named **Weekly AI Ecosystem Report** generates and emails a report every week.
-Configure SMTP in Odoo **Outgoing Mail Server**.
-Recipient and sender are stored via `ir.config_parameter`.
+**Denilson Fragoso Da Silva Santos** (IST-1113142)
+*Mestrado em Engenharia Informática e de Computadores (MEIC)*
+Instituto Superior Técnico, Universidade de Lisboa
+*Orientador: Prof. Alberto Rodrigues da Silva*
 
 ---
-
-## RSL/ASL Specifications
-
-Located in `docs/specs/`.
-Validated in ITLingoCloud with **0 errors**, following the structure of the
-BillingSystem case study provided by Prof. Alberto Rodrigues da Silva.
-
-Files:
-
-- `AIProjectManagementAI-RSL.rsl` — Requirements Specification (v2.0)
-- `AIProjectManagementAI-ASL.asl` — Application Specification (v2.0)
-- `ProjectManagementAI-CaseStudy-Definition-v1.0.{md,pdf}` — informal case study
-- `diagrams/` — 3 SVGs (use-case + 2 domain models)
-
-Model coverage: Person, Project, PersonProject, ProjectStage, Task,
-ChatFolder, ChatSession, StreamChat, AgentTemplate, AgentInstance, AgentTask.
-
----
-
-## Known Limitations
-
-- ITOI validator and templating engine accept different syntactic profiles.
-- Groq rate limit: 1000 OTPM (output), 7000 ITPM (input) on free tier. The orchestrator handles this gracefully: the hybrid router absorbs ~90% of traffic locally, and the LLM fallback retries up to 3 times with exponential backoff [30s, 60s, 120s]. If all attempts fail, the user gets a friendly retry message instead of a raw traceback.
-- Odoo 19 `ir.cron` removed `numbercall` and `doall`.
-- `project.task.user_id` does not exist; use `user_ids` or `create_uid`.
-- ReportLab `Bullet` style name conflict; use unique names.
-
----
-
-## Graceful Degradation
-
-The orchestrator implements a best-effort fallback strategy for LLM failures
-(rate limits, empty responses, network errors) that is critical on Groq's
-free tier:
-
-- **Write intents** (`create`, `add`, `delete`, `move`, `update`) execute
-  exactly **one attempt**. The tools are idempotent, so re-running them
-  would waste input tokens without changing the outcome.
-- **On rate limit or empty response**, the orchestrator extracts the last
-  tool output from the partially executed Crew and returns it to the user.
-  A write that reached the database is therefore never reported as failed.
-- **If no tool output is available**, the user gets a friendly message
-  (`"Rate limit reached on Groq free tier. Please retry in 60 seconds."`)
-  instead of a Python traceback.
-
-This behaviour was validated end-to-end: a `create_project` call that hit
-`ITPM 7000` still persisted the project in Odoo (id 18), and the user
-received a clear retry hint rather than a stack trace.
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-## Author
-
-**Denilson Fragoso Da Silva Santos**
-Instituto Superior Técnico, University of Lisbon
-MEIC 2026/2027
-
-© Denilson Fragoso Da Silva Santos · Instituto Superior Técnico · 2026
+<div align="center">
+  <sub>Desenvolvido com ❤️ para a dissertação MEIC 2026/2027</sub>
+</div>
