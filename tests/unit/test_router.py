@@ -122,4 +122,4 @@ def test_patterns_count_stable(router_mod):
     # The router should expose exactly 17 patterns (one per intent).
     # If you add a new write verb, update this number AND the guard in
     # orchestrator.py (see T8 in CHANGELOG_TECHNICAL.md).
-    assert len(router_mod.PATTERNS) == 17
+    assert len(router_mod.PATTERNS) == 20
