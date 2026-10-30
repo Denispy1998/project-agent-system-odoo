@@ -240,6 +240,8 @@ def create_project(name: str, tasks: str = "") -> str:
     if not name:
         return "ERROR: Project name cannot be empty."
     proj_id = _find_project(name)
+    if proj_id:
+        return f"INFO: Project '{name}' already exists (ID {proj_id}). No new data was created."
     if not proj_id:
         proj_id = _call('project.project', 'create', [{'name': name}])
         task_list = [_clean(t) for t in tasks.split(',') if _clean(t)]
@@ -366,9 +368,10 @@ def delete_task(project_name: str, task_name: str) -> str:
     if not ids:
         ids = _call('project.task', 'search',
                     [[('project_id', '=', proj_id), ('name', 'ilike', task_name)]])
-    if ids:
-        _call('project.task', 'unlink', [ids])
-    return (f"Task '{task_name}' is no longer present in project "
+    if not ids:
+        return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
+    _call('project.task', 'unlink', [ids])
+    return (f"SUCCESS: Task '{task_name}' deleted from project "
             f"'{project_name}'. Action complete. Do NOT retry.")
 
 
@@ -592,8 +595,8 @@ def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
         proj_id = _call('project.project', 'create', [{'name': project_name}])
         
         stage_todo = _call('project.task.type', 'create', [{'name': 'To Do', 'sequence': 1, 'project_ids': [(4, proj_id)]}])
-        stage_prog = _call('project.task.type', 'create', [{'name': 'In Progress', 'sequence': 2, 'project_ids': [(4, proj_id)]}])
-        stage_done = _call('project.task.type', 'create', [{'name': 'Done', 'sequence': 3, 'project_ids': [(4, proj_id)]}])
+        _call('project.task.type', 'create', [{'name': 'In Progress', 'sequence': 2, 'project_ids': [(4, proj_id)]}])
+        _call('project.task.type', 'create', [{'name': 'Done', 'sequence': 3, 'project_ids': [(4, proj_id)]}])
         
         task_list = [t.strip() for t in tasks_csv.split(',') if t.strip()]
         if not task_list:
@@ -643,10 +646,6 @@ def bulk_move_tasks(project_name: str, from_stage: str, to_stage: str) -> str:
         return f"SUCCESS: Moved {len(task_ids)} tasks from '{from_stage}' to '{to_stage}' in project '{project_name}'."
     except Exception as e:
         return f"ERROR: {str(e)}"
-    except Exception as e:
-        return f"ERROR: {str(e)}"
-    except Exception as e:
-        return f"ERROR: {str(e)}"
 
 @tool("simulate_delay")
 def simulate_delay(project_name: str, task_name: str, delay_days: int) -> str:
@@ -685,7 +684,7 @@ def simulate_delay(project_name: str, task_name: str, delay_days: int) -> str:
         
         # Verificar o impacto (SINTAXE CORRETA: lista de campos)
         all_tasks = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
-        impacted_tasks = _call('project.task', 'read', [all_tasks, ['name', 'date_deadline']])
+        _call('project.task', 'read', [all_tasks, ['name', 'date_deadline']])
         
         return f"SUCCESS: Task '{task_name}' delayed by {delay_days} days. New deadline: {new_date.strftime('%Y-%m-%d')}. Impact analysis: The project timeline has been recalculated."
     except Exception as e:

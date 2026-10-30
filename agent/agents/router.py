@@ -141,6 +141,22 @@ PATTERNS = [
     # delete_project
     (re.compile(r"^\s*delete\s+(the\s+)?project\s+[\"']?(.+?)[\"']?\s*$", re.I),
      lambda m: delete_project.func(project_name=_clean_name(m.group(2)))),
+
+    # create_project — forma curta "create project X" (sem called/named)
+    (re.compile(r"^\s*create\s+(a\s+)?(new\s+)?project\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: create_project.func(name=_clean_name(m.group(3)))),
+
+    # add_task — forma curta "add task X to project Y"
+    (re.compile(r"^\s*add\s+(a\s+)?task\s+[\"']?(.+?)[\"']?\s+(in|to)\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: add_task.func(
+         project_name=_clean_name(m.group(4)),
+         task_name=_clean_name(m.group(2)))),
+
+    # create_stage — forma curta "create stage X in project Y"
+    (re.compile(r"^\s*create\s+(a\s+)?stage\s+[\"']?(.+?)[\"']?\s+(in|of|to)\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: create_stage.func(
+         project_name=_clean_name(m.group(4)),
+         stage_name=_clean_name(m.group(2)))),
 ]
 
 
