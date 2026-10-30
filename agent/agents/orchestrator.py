@@ -2,7 +2,6 @@
 """Agent Orchestrator – routes requests to specialized agents (CrewAI 0.175.0)."""
 import os
 import time
-import traceback
 from typing import Optional
 from crewai import Crew, Task, LLM
 from dotenv import load_dotenv
