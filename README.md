@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🤖 AI Project Management Ecosystem (v2.8.0)</h1>
+  <h1>🤖 AI Project Management Ecosystem (v2.9.2)</h1>
   <p><strong>Planeamento, Execução e Tomada de Decisão com Agentes de IA Integrados no Odoo 19</strong></p>
 
   ![Odoo](https://img.shields.io/badge/Odoo-19.0-714B67?style=for-the-badge&logo=odoo)
@@ -16,14 +16,16 @@
 ## 📌 Sobre o Projeto
 Este repositório contém o ecossistema multiagente de Inteligência Artificial desenvolvido no âmbito da dissertação de Mestrado (MEIC) no Instituto Superior Técnico. O sistema integra um agente conversacional (CrewAI + Groq) com o ERP Odoo 19, permitindo a gestão de projetos através de linguagem natural, com elevada performance, segurança e governança.
 
-### 🚀 Principais Funcionalidades (v2.8.0)
+### 🚀 Principais Funcionalidades (v2.9.2)
 - **Hybrid Router:** Comandos simples resolvidos por Regex (0.05s) e comandos complexos delegados ao LLM (2-5s).
-- **17+ Ferramentas Idempotentes:** CRUD de projetos, tarefas e stages; análise de riscos; diagramas Mermaid; Macros de engenharia (ex: `setup_agile_project`).
+- **20 Ferramentas Idempotentes:** CRUD de projetos, tarefas e stages; análise de riscos; diagramas Mermaid; Macros de engenharia (ex: `setup_agile_project`).
 - **BackOffice Nativo no Odoo:** Gestão dinâmica de *System Prompts* (Templates) e instanciação de agentes.
 - **Colaboração Multiagente:** 6 agentes especializados (Project Manager, Team Member, Reporting, Diagram, **Planning**, **Risk**).
-- **Segurança RBAC (2 Camadas):** Verificação de permissões no Odoo e *server-side* no FastAPI.
+- **Segurança RBAC (2 Camadas):** Verificação de permissões no Odoo e *server-side* no FastAPI. Inclui bloqueio de Macros (`setup`, `simulate`, `bulk`) para Team Members.
+- **Respostas Rigorosas:** Todas as ferramentas devolvem `SUCCESS:`, `INFO:` ou `ERROR:` (sem alucinações do LLM).
 - **Automação:** Relatório semanal automático por email (Cron Job).
 - **Interface Otimizada:** Chat multi-sessão, dashboards interativos com Chart.js e exportação PDF/CSV.
+- **Engenharia com Qualidade Verificável:** 44 testes unitários, 16 testes de integração, 30 pontos de certificação end-to-end e testes Enterprise.
 
 ---
 
@@ -34,8 +36,6 @@ O ecossistema segue uma arquitetura de três camadas, complementada por um route
 1. **Interface (Odoo 19):** UI em HTML5/CSS3/JS, chat multi-sessão e dashboards.
 2. **Orquestração (FastAPI + CrewAI):** Microserviço que interpreta a linguagem natural e coordena os agentes.
 3. **Dados (PostgreSQL 18):** Persistência nativa do Odoo e estado das sessões de IA.
-
-> 📌 *Os diagramas detalhados da arquitetura (Figuras 1 e 2 do relatório PIC2) estão disponíveis no documento oficial submetido no Fénix.*
 
 ---
 
