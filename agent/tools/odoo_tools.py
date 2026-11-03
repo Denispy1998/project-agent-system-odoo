@@ -1,5 +1,16 @@
 # -*- coding: utf-8 -*-
 """Odoo XML-RPC Tools for CrewAI agents.
+All write tools are IDEMPOTENT with UNIFIED responses."""
+import xmlrpc.client
+import os
+import logging
+from dotenv import load_dotenv
+from crewai.tools import tool
+
+_logger = logging.getLogger(__name__)
+
+# -*- coding: utf-8 -*-
+"""Odoo XML-RPC Tools for CrewAI agents.
 All write tools are IDEMPOTENT with UNIFIED responses: the same message is
 returned whether the object was just created or already existed.
 """
@@ -242,20 +253,24 @@ def create_project(name: str, tasks: str = "") -> str:
     proj_id = _find_project(name)
     if proj_id:
         return f"INFO: Project '{name}' already exists (ID {proj_id}). No new data was created."
-    if not proj_id:
-        proj_id = _call('project.project', 'create', [{'name': name}])
-        task_list = [_clean(t) for t in tasks.split(',') if _clean(t)]
-        for tname in task_list:
-            if not _find_task(proj_id, tname):
-                try:
-                    _call('project.task', 'create', [{
-                        'name': tname, 'project_id': proj_id, 'stage_id': False,
-                    }])
-                except Exception:
-                    pass
-    return (f"Project '{name}' (ID {proj_id}) is ready. "
-            f"Action complete. Do NOT retry.")
 
+    proj_id = _call('project.project', 'create', [{'name': name}])
+    task_list = [_clean(t) for t in tasks.split(',') if _clean(t)]
+    failed_tasks = []
+    for tname in task_list:
+        if not _find_task(proj_id, tname):
+            try:
+                _call('project.task', 'create', [{
+                    'name': tname, 'project_id': proj_id, 'stage_id': False,
+                }])
+            except Exception as e:
+                failed_tasks.append(tname)
+                _logger.error(f"[Odoo Tools] Erro ao criar a tarefa '{tname}': {e}")
+
+    msg = f"SUCCESS: Project '{name}' (ID {proj_id}) is ready. Action complete. Do NOT retry."
+    if failed_tasks:
+        msg += f"\nWARNING: The following tasks could not be created: {', '.join(failed_tasks)}"
+    return msg
 
 @tool("add_task")
 def add_task(project_name: str, task_name: str) -> str:
@@ -282,7 +297,7 @@ def add_task(project_name: str, task_name: str) -> str:
         if not verified:
             return (f"ERROR: Task '{task_name}' was created but not linked "
                     f"to project '{project_name}'.")
-    return (f"Task '{task_name}' is ready in project '{project_name}' "
+    return (f"SUCCESS: Task '{task_name}' is ready in project '{project_name}' "
             f"(ID {task_id}). Action complete. Do NOT retry.")
 
 
@@ -307,7 +322,7 @@ def create_stage(project_name: str, stage_name: str, sequence: int = 10) -> str:
         if not linked:
             _call('project.task.type', 'write',
                   [[stage_id], {'project_ids': [(4, proj_id)]}])
-    return (f"Stage '{stage_name}' is ready in project '{project_name}' "
+    return (f"SUCCESS: Stage '{stage_name}' is ready in project '{project_name}' "
             f"(ID {stage_id}). Action complete. Do NOT retry.")
 
 
@@ -325,7 +340,7 @@ def move_single_task(project_name: str, task_name: str, target_stage_name: str) 
         return (f"ERROR: Stage '{target_stage_name}' not found in project "
                 f"'{project_name}'. Create it first with create_stage.")
     _call('project.task', 'write', [[task_id], {'stage_id': stage_id}])
-    return (f"Task '{task_name}' is now in stage '{target_stage_name}'. "
+    return (f"SUCCESS: Task '{task_name}' is now in stage '{target_stage_name}'. "
             f"Action complete. Do NOT retry.")
 
 
@@ -383,8 +398,7 @@ def delete_stage(project_name: str, stage_name: str) -> str:
         return f"ERROR: Project '{project_name}' not found."
     stage_id = _find_stage(proj_id, stage_name)
     if not stage_id:
-        return (f"Stage '{stage_name}' is no longer present in project "
-                f"'{project_name}'. Action complete. Do NOT retry.")
+        return f"ERROR: Stage '{stage_name}' not found in project '{project_name}'."
     # Count tasks of THIS project using the stage
     in_use = _call('project.task', 'search_count',
                    [[('stage_id', '=', stage_id), ('project_id', '=', proj_id)]])
@@ -407,8 +421,7 @@ def delete_stage(project_name: str, stage_name: str) -> str:
             except Exception:
                 pass  # Already unlinked from all projects, keep as orphan
 
-    return (f"Stage '{stage_name}' is no longer present in project "
-            f"'{project_name}'. Action complete. Do NOT retry.")
+    return f"SUCCESS: Stage '{stage_name}' deleted from project '{project_name}'. Action complete. Do NOT retry."
 
 
 @tool("delete_project")
@@ -416,14 +429,12 @@ def delete_project(project_name: str) -> str:
     """Delete a project AND all its tasks."""
     proj_id = _find_project(project_name)
     if not proj_id:
-        return (f"Project '{project_name}' is no longer present in the system. "
-                f"Action complete. Do NOT retry.")
+        return f"ERROR: Project '{project_name}' not found."
     task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
     if task_ids:
         _call('project.task', 'unlink', [task_ids])
     _call('project.project', 'unlink', [[proj_id]])
-    return (f"Project '{project_name}' is no longer present in the system. "
-            f"Action complete. Do NOT retry.")
+    return f"SUCCESS: Project '{project_name}' deleted. Action complete. Do NOT retry."
 
 
 
@@ -507,7 +518,7 @@ def set_task_status(project_name: str, task_name: str, new_status: str) -> str:
         return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
 
     _call('project.task', 'write', [[task_id], {'task_status': normalized}])
-    return (f"Task '{task_name}' status is now '{normalized}'. "
+    return (f"SUCCESS: Task '{task_name}' status is now '{normalized}'. "
             f"Action complete. Do NOT retry.")
 
 
@@ -553,7 +564,7 @@ def _user_is_manager_via_xmlrpc(user_id):
             return True
         return False
     except Exception as e:
-        print(f"[verify_manager] XML-RPC error for user_id={user_id}: {e}")
+        _logger.error(f"[verify_manager] XML-RPC error for user_id={user_id}: {e}")
         return False
 
 

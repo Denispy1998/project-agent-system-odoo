@@ -1,3 +1,6 @@
+import logging
+_logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 import os
@@ -64,7 +67,7 @@ def run_agent(req: ChatRequest):
     if client_claims_manager and req.user_id:
         server_truth = verify_user_is_manager(req.user_id)
         if not server_truth:
-            print('[PermissionGuard] user_id=' + str(req.user_id) +
+            _logger.warning('[PermissionGuard] user_id=' + str(req.user_id) +
                   ' claimed is_manager=True but Odoo says otherwise -> downgraded')
         effective_is_manager = server_truth
     else:
@@ -75,11 +78,11 @@ def run_agent(req: ChatRequest):
     cached_result = get_cached_response(cache_key)
     
     if cached_result:
-        print(f'[CACHE] Hit para: "{req.message}" -> Resposta devolvida do cache.')
+        _logger.info(f'[CACHE] Hit para: "{req.message}" -> Resposta devolvida do cache.')
         return ChatResponse(response=cached_result)
 
     # === Execução no Orquestrador ===
-    print(f'[ORCHESTRATOR] A processar: "{req.message}"...')
+    _logger.info(f'[ORCHESTRATOR] A processar: "{req.message}"...')
     result = run_orchestrator(
         user_message=req.message,
         user_id=req.user_id,

@@ -59,3 +59,11 @@ Este documento cataloga os casos técnicos (T1-T11) de problemas encontrados, so
 *   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
 *   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
 *   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
+
+### T12: Substituição de `print()` por Logging
+* **Problema:** O uso de `print()` poluía a consola e não permitia categorizar a severidade (Info, Warning, Error).
+* **Solução:** Implementação de `import logging` e `_logger`. Logs estruturados para produção.
+
+### T13: Otimização `read_group` para `_read_group` (Odoo 19)
+* **Problema:** O método `read_group` foi descontinuado no Odoo 19 (emitia warnings).
+* **Solução:** Atualização do `dashboard_utils.py` para a sintaxe nativa `_read_group(aggregates=['id:count'])`.

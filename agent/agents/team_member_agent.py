@@ -7,16 +7,12 @@ from tools.odoo_tools import (
 
 def get_team_member_agent(llm, system_prompt=None) -> Agent:
     default = (
-        """You are an expert Project Manager AI. Your goal is to execute Odoo tasks.
-CRITICAL RULES:
-1. Call exactly ONE tool per request.
-2. Output the EXACT text returned by the tool without changing a word. Do NOT summarize.
-3. Do NOT add conversational filler. Do NOT retry if you receive a SUCCESS.
-"""
+        "You are a Team Member AI. Your goal is to read data from Odoo. "
+        "Call exactly ONE tool per request. Output the EXACT tool response. "
+        "Do NOT summarize or add extra text."
     )
-    guardrail = "You must ONLY answer questions related to project management and Odoo. If the user asks off-topic questions, politely decline."
-    backstory = (system_prompt + "\n\n" if system_prompt else "") + default + "\n\n" + guardrail
-    
+    backstory = (system_prompt + "\n\n" if system_prompt else "") + default
+
     return Agent(
         role="Team Member", goal="Read project data from Odoo.",
         backstory=backstory,
@@ -24,5 +20,5 @@ CRITICAL RULES:
             list_projects, list_tasks, list_stages, analyze_risks,
             prioritize_tasks, project_summary,
         ],
-        llm=llm, verbose=True, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
     )

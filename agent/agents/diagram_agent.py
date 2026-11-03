@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 from crewai import Agent
+from tools.mermaid_tools import generate_mermaid_diagram
 
 def get_diagram_agent(llm, system_prompt=None) -> Agent:
     default = (
-        """You are a Mermaid diagram expert. Generate ONLY the Mermaid code enclosed in ```mermaid ... ```. Do NOT add explanations."""
+        "You are a Mermaid diagram expert. "
+        "Use the generate_mermaid_diagram tool to create the diagram. "
+        "Output the EXACT tool response."
     )
-    guardrail = "You must ONLY answer questions related to project management and Odoo. If the user asks off-topic questions, politely decline."
-    backstory = (system_prompt + "\n\n" if system_prompt else "") + default + "\n\n" + guardrail
-    
+    backstory = (system_prompt + "\n\n" if system_prompt else "") + default
+
     return Agent(
-        role="Diagram Agent", goal="Generate Mermaid diagrams based on user requests.",
+        role="Diagram Agent", goal="Generate Mermaid diagrams.",
         backstory=backstory,
-        llm=llm, verbose=True, allow_delegation=False, max_iter=1,
+        tools=[generate_mermaid_diagram], # Ferramenta adicionada!
+        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
     )

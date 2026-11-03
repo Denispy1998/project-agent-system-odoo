@@ -2,6 +2,7 @@
 """Agent Orchestrator – routes requests to specialized agents (CrewAI 0.175.0)."""
 import os
 import time
+import logging
 from typing import Optional
 from crewai import Crew, Task, LLM
 from dotenv import load_dotenv
@@ -15,10 +16,9 @@ from agents.diagram_agent import get_diagram_agent
 from agents.router import try_route
 
 load_dotenv('/home/denispy/project-agent-system/.env')
-
+_logger = logging.getLogger(__name__)
 
 def _valid_key(key):
-    """Return True if the API key looks real (not a placeholder)."""
     if not key:
         return False
     k = key.strip()
@@ -28,67 +28,34 @@ def _valid_key(key):
         return False
     return True
 
-
 def get_llm(model_name: str = "groq"):
-    """Return a CrewAI LLM instance. Falls back to Groq if the selected
-    provider has no valid API key configured."""
     if model_name == "openai":
         key = os.getenv("OPENAI_API_KEY")
         if _valid_key(key):
-            return LLM(
-                model="openai/gpt-4o",
-                temperature=0.0,
-                api_key=key,
-            )
-        print("[Orchestrator] OpenAI key invalid/missing -> fallback to Groq")
-        return LLM(
-            model="groq/qwen/qwen3.8-27b",
-            max_tokens=512,
-            temperature=0.0,
-            api_key=os.getenv("GROQ_API_KEY"),
-        )
+            return LLM(model="openai/gpt-4o", temperature=0.0, api_key=key)
+        _logger.warning("OpenAI key invalid/missing -> fallback to Groq")
+        return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
     if model_name == "anthropic":
         key = os.getenv("ANTHROPIC_API_KEY")
         if _valid_key(key):
-            return LLM(
-                model="anthropic/claude-3-5-sonnet-20241022",
-                temperature=0.0,
-                api_key=key,
-            )
-        print("[Orchestrator] Anthropic key invalid/missing -> fallback to Groq")
-        return LLM(
-            model="groq/qwen/qwen3.8-27b",
-            max_tokens=512,
-            temperature=0.0,
-            api_key=os.getenv("GROQ_API_KEY"),
-        )
+            return LLM(model="anthropic/claude-3-5-sonnet-20241022", temperature=0.0, api_key=key)
+        _logger.warning("Anthropic key invalid/missing -> fallback to Groq")
+        return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
-    return LLM(
-        model="groq/qwen/qwen3.8-27b",
-        max_tokens=512,
-        temperature=0.0,
-        api_key=os.getenv("GROQ_API_KEY"),
-    )
-
+    return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
 def _detect_agent(user_message: str, is_manager: bool = False) -> str:
     msg = user_message.lower()
     if any(k in msg for k in ["diagram", "flowchart", "sequence", "er diagram", "mermaid"]):
         return "diagram"
-    if any(k in msg for k in ["report", "summary", "status", "debug", "list", "show",
-                              "analyze", "prioritize", "risks"]):
-        return "reporting" if any(k in msg for k in ["report", "summary", "status"]) else (
-            "team_member" if not is_manager else "project_manager"
-        )
+    if any(k in msg for k in ["report", "summary", "status", "debug", "list", "show", "analyze", "prioritize", "risks"]):
+        return "reporting" if any(k in msg for k in ["report", "summary", "status"]) else ("team_member" if not is_manager else "project_manager")
     if any(k in msg for k in ["create", "add", "delete", "remove", "move", "update"]) and is_manager:
         return "project_manager"
     return "project_manager" if is_manager else "team_member"
 
-
 def _recover_tool_output(crew):
-    """Best-effort extraction of a tool output from a partially
-    executed Crew. Returns a human-readable string or None."""
     if crew is None:
         return None
     try:
@@ -106,89 +73,48 @@ def _recover_tool_output(crew):
         pass
     return None
 
-
-_DIAGRAM_KEYWORDS = (
-    "diagram", "flowchart", "mermaid", "gantt",
-    "pie chart", "sequence chart", "er chart", "class chart",
-    "state chart",
-)
-
+_DIAGRAM_KEYWORDS = ("diagram", "flowchart", "mermaid", "gantt", "pie chart", "sequence chart", "er chart", "class chart", "state chart")
 
 def _detect_diagram_intent(msg: str) -> bool:
-    """True if the message asks for a diagram (shortcut before CrewAI)."""
     m = msg.lower()
     return any(k in m for k in _DIAGRAM_KEYWORDS)
 
-
-def run_orchestrator(
-    user_message: str,
-    user_id: Optional[int] = None,
-    is_manager: bool = False,
-    model_name: str = "groq",
-    system_prompt: Optional[str] = None,
-) -> str:
-    # === Permission guard: block write intents for team members ===
-    # KEEP IN SYNC with the write verbs used by router.py patterns.
-    # Router write patterns start with: create, add, move, delete, set, mark.
-    # If a new write verb is added to the router, add it here too.
-    write_keywords = [
-        "create", "add", "delete", "remove", "move", "update", "edit",
-        "set ", "set\t",              # 'set task X ...' (trailing space to avoid 'settings')
-        "mark ", "assign ",            # 'mark task X as ...'
-        "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar",
-        "definir", "marcar", "atribuir",
-    ]
+def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None) -> str:
+    write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit", "set ", "set\t", "mark ", "assign ", "setup", "simulate", "bulk", "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar", "definir", "marcar", "atribuir"]
     msg_lower = user_message.lower()
     wants_write = any(k in msg_lower for k in write_keywords)
 
     if wants_write and not is_manager:
-        return (
-            "DENIED: You are signed in as a Team Member. "
-            "Write operations (create/add/delete/move/update) require the "
-            "'Project Manager' role. Please contact an administrator if you "
-            "need this permission. You can still ask me to list projects, "
-            "list tasks, analyze risks, prioritize work, or generate summaries."
-        )
+        return ("DENIED: You are signed in as a Team Member. Write operations require the 'Project Manager' role.")
 
-    # Retry strategy: 3 attempts with exponential backoff.
-    #   1st attempt: no wait
-    #   2nd attempt: wait 30s
-    #   3rd attempt: wait 60s
-    # Worst case wall time ≈ 90s + LLM latency, well under the browser's
-    # 180s timeout (the previous "3 × 65s" config exceeded it).
-    # The router local + diagram shortcut absorb ~90% of traffic, so this
-    # only fires on genuine LLM fallbacks.
     max_attempts = 3
     backoff_schedule = [30, 60, 120]
-
     crew = None
 
-    # === HYBRID ROUTER: try local regex first (no LLM, no rate limit) ===
     local_result = try_route(user_message)
     if local_result is not None:
-        print("[Orchestrator] Routed locally (no LLM call)")
+        _logger.info("Routed locally (no LLM call)")
         return local_result
 
-    # === DIAGRAM SHORTCUT ===
-    # Call the tool directly instead of going through CrewAI:
-    #   - 1 LLM call instead of 2 (halves tokens, avoids rate limit)
-    #   - The deterministic fallback actually works when Groq is rate-limited
+    off_topic_keywords = ["poem", "poema", "cook", "cozinhar", "recipe", "receita", "weather", "clima", "joke", "piada", "story", "história", "filme", "movie"]
+    if any(k in msg_lower for k in off_topic_keywords):
+        _logger.info("Off-topic blocked locally (no LLM call)")
+        return ("INFO: I am a Project Management AI Assistant. I can only help with projects, tasks, risks, and reports.")
+
     if _detect_diagram_intent(user_message):
         try:
             from tools.mermaid_tools import generate_mermaid_diagram
-            print("[Orchestrator] Diagram intent detected — direct tool call")
+            _logger.info("Diagram intent detected — direct tool call")
             return generate_mermaid_diagram.func(description=user_message)
         except Exception as e:
-            print(f"[Orchestrator] Diagram shortcut failed: {e}")
+            _logger.error(f"Diagram shortcut failed: {e}")
 
     for attempt in range(1, max_attempts + 1):
         try:
             llm = get_llm(model_name)
             agent_type = _detect_agent(user_message, is_manager)
-
-            # Lógica de seleção baseada no Template (System Prompt)
             sp_lower = (system_prompt or "").lower()
-            
+
             if agent_type == "diagram":
                 agent = get_diagram_agent(llm, system_prompt)
                 task_desc = f"Generate a Mermaid diagram for: {user_message}"
@@ -208,12 +134,8 @@ def run_orchestrator(
                 agent = get_team_member_agent(llm, system_prompt)
                 task_desc = user_message
 
-            task = Task(
-                description=task_desc,
-                agent=agent,
-                expected_output="A clear, concise response in English.",
-            )
-            crew = Crew(agents=[agent], tasks=[task], verbose=True)
+            task = Task(description=task_desc, agent=agent, expected_output="A clear, concise response in English.")
+            crew = Crew(agents=[agent], tasks=[task], verbose=False)
             result = crew.kickoff()
             return str(result)
 
@@ -228,23 +150,16 @@ def run_orchestrator(
 
             if is_rate_limit and attempt < max_attempts:
                 wait = backoff_schedule[attempt - 1]
-                print(f"[Orchestrator] Rate limit hit. Waiting {wait}s "
-                      f"before retry ({attempt}/{max_attempts})...")
+                _logger.warning(f"Rate limit hit. Waiting {wait}s before retry ({attempt}/{max_attempts})...")
                 time.sleep(wait)
                 continue
 
             if is_rate_limit:
                 total_wait = sum(backoff_schedule[:max_attempts - 1])
-                return (f"Rate limit reached on Groq free tier after "
-                        f"{max_attempts} attempts (~{total_wait}s total). "
-                        f"Please retry in 60 seconds.")
+                return f"Rate limit reached on Groq free tier after {max_attempts} attempts (~{total_wait}s total). Please retry in 60 seconds."
 
             if is_empty:
-                return ("LLM returned an empty response. "
-                        "Please retry in 30 seconds.")
+                return "LLM returned an empty response. Please retry in 30 seconds."
 
-            return (f"Orchestrator error: {type(e).__name__}. "
-                    "Please retry in 30 seconds.")
-
-
-# End of file
+            _logger.error(f"Orchestrator error: {type(e).__name__}")
+            return f"Orchestrator error: {type(e).__name__}. Please retry in 30 seconds."
