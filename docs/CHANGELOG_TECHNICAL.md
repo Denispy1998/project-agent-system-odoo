@@ -1,6 +1,6 @@
 # CHANGELOG TÉCNICO - ECOSSISTEMA MULTIAGENTE
 
-Este documento cataloga os casos técnicos (T1-T11) de problemas encontrados, soluções aplicadas e lições aprendidas ao longo do desenvolvimento do ecossistema (v2.1 até v2.9.4).
+Este documento cataloga os casos técnicos (T1-T13) de problemas encontrados, soluções aplicadas e lições aprendidas ao longo do desenvolvimento do ecossistema (v2.1 até v2.9.5).
 
 ## Casos Técnicos
 
@@ -51,19 +51,20 @@ Este documento cataloga os casos técnicos (T1-T11) de problemas encontrados, so
 *   **Solução:** Remoção das ferramentas de CRUD básico (já tratadas pelo Router Local via regex) do contexto do LLM. O Project Manager passou de 17 para 8 ferramentas. O Agente de Riscos e Planeamento passaram de 4 para 2. O `verbose` foi desligado.
 *   **Resultado:** Redução de ~70% no consumo de tokens por pedido.
 
+### T12: Substituição de `print()` por Logging (v2.9.5)
+*   **Problema:** O uso de `print()` poluía a consola e não permitia categorizar a severidade (Info, Warning, Error).
+*   **Solução:** Implementação de `import logging` e `_logger`. Logs estruturados para produção.
+
+### T13: Otimização `read_group` para `_read_group` (Odoo 19) (v2.9.5)
+*   **Problema:** O método `read_group` foi descontinuado no Odoo 19 (emitia warnings).
+*   **Solução:** Atualização do `dashboard_utils.py` para a sintaxe nativa `_read_group(aggregates=['id:count'])`.
+
 ---
 ## Notas de Versão (Histórico)
 
+*   **v2.9.5 (03/Nov/2026):** Auditoria final de engenharia. Logging estruturado. Otimização Odoo 19 (`_read_group`). Testes E2E a 100% verde.
 *   **v2.9.4 (02/Nov/2026):** Otimização de agentes para o Groq Free Tier. Implementação de Cache no FastAPI. Limpeza de 20 projetos de teste na DB. Ruff 0 warnings.
 *   **v2.9.3 (30/Out/2026):** Correção do CI (`test_patterns_count_stable`).
 *   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
 *   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
 *   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
-
-### T12: Substituição de `print()` por Logging
-* **Problema:** O uso de `print()` poluía a consola e não permitia categorizar a severidade (Info, Warning, Error).
-* **Solução:** Implementação de `import logging` e `_logger`. Logs estruturados para produção.
-
-### T13: Otimização `read_group` para `_read_group` (Odoo 19)
-* **Problema:** O método `read_group` foi descontinuado no Odoo 19 (emitia warnings).
-* **Solução:** Atualização do `dashboard_utils.py` para a sintaxe nativa `_read_group(aggregates=['id:count'])`.

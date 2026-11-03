@@ -1,120 +1,66 @@
-<div align="center">
-  <h1>🤖 AI Project Management Ecosystem (v2.9.2)</h1>
-  <p><strong>Planeamento, Execução e Tomada de Decisão com Agentes de IA Integrados no Odoo 19</strong></p>
+# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos
 
-  ![Odoo](https://img.shields.io/badge/Odoo-19.0-714B67?style=for-the-badge&logo=odoo)
-  ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python)
-  ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi)
-  ![CrewAI](https://img.shields.io/badge/CrewAI-0.175-FF6B6B?style=for-the-badge)
-  ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=for-the-badge&logo=postgresql)
-  ![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions)
-  ![Status](https://img.shields.io/badge/Status-CERTIFIED_30%2F30-success?style=for-the-badge)
-</div>
+[![Odoo 19](https://img.shields.io/badge/Odoo-19-875A7B.svg)](https://www.odoo.com/)
+[![CrewAI](https://img.shields.io/badge/CrewAI-0.175.0-FF6B6B.svg)](https://github.com/joaomdmoura/crewAI)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688.svg)](https://fastapi.tiangolo.com/)
+[![Tests](https://img.shields.io/badge/Tests-44%20Passed-success.svg)]()
+[![Certification](https://img.shields.io/badge/Certification-30%2F30-success.svg)]()
 
----
+Este repositório contém o código-fonte do ecossistema multiagente de Inteligência Artificial desenvolvido para a dissertação do Mestrado em Engenharia Informática e de Computadores (MEIC) do Instituto Superior Técnico (IST).
 
-## 📌 Sobre o Projeto
-Este repositório contém o ecossistema multiagente de Inteligência Artificial desenvolvido no âmbito da dissertação de Mestrado (MEIC) no Instituto Superior Técnico. O sistema integra um agente conversacional (CrewAI + Groq) com o ERP Odoo 19, permitindo a gestão de projetos através de linguagem natural, com elevada performance, segurança e governança.
-
-### 🚀 Principais Funcionalidades (v2.9.2)
-- **Hybrid Router:** Comandos simples resolvidos por Regex (0.05s) e comandos complexos delegados ao LLM (2-5s).
-- **20 Ferramentas Idempotentes:** CRUD de projetos, tarefas e stages; análise de riscos; diagramas Mermaid; Macros de engenharia (ex: `setup_agile_project`).
-- **BackOffice Nativo no Odoo:** Gestão dinâmica de *System Prompts* (Templates) e instanciação de agentes.
-- **Colaboração Multiagente:** 6 agentes especializados (Project Manager, Team Member, Reporting, Diagram, **Planning**, **Risk**).
-- **Segurança RBAC (2 Camadas):** Verificação de permissões no Odoo e *server-side* no FastAPI. Inclui bloqueio de Macros (`setup`, `simulate`, `bulk`) para Team Members.
-- **Respostas Rigorosas:** Todas as ferramentas devolvem `SUCCESS:`, `INFO:` ou `ERROR:` (sem alucinações do LLM).
-- **Automação:** Relatório semanal automático por email (Cron Job).
-- **Interface Otimizada:** Chat multi-sessão, dashboards interativos com Chart.js e exportação PDF/CSV.
-- **Engenharia com Qualidade Verificável:** 44 testes unitários, 16 testes de integração, 30 pontos de certificação end-to-end e testes Enterprise.
+O objetivo principal é integrar agentes autónomos baseados em LLMs diretamente na plataforma ERP **Odoo 19**, automatizando o planeamento, execução e tomada de decisão na gestão de projetos.
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## ✨ Funcionalidades Principais
 
-O ecossistema segue uma arquitetura de três camadas, complementada por um router híbrido interno:
+* **6 Agentes Especializados:** Project Manager, Team Member, Reporting, Diagram, Planning e Risk.
+* **20 Ferramentas Idempotentes:** CRUD completo (Projetos, Tarefas, Stages), análise de riscos, priorização, geração de diagramas Mermaid e Macros de engenharia (ex: `setup_agile_project`).
+* **Router Híbrido (Regex + LLM):** ~90% dos comandos comuns são resolvidos localmente (latência de 0.05s) sem gastar tokens de LLM. O fallback para o CrewAI + Groq (LLM) só acontece para pedidos complexos.
+* **BackOffice de Governança:** Menu nativo no Odoo para gestão dinâmica de *System Prompts* (Templates), permitindo alterar a personalidade dos agentes sem tocar no código.
+* **Controlo de Acesso (RBAC) em 2 Camadas:** Validação na interface Odoo e verificação *server-side* (FastAPI) para prevenir falsificação de identidade (*spoofing*).
+* **Cache de Respostas (FastAPI):** Sistema de cache em memória (TTL de 5 minutos) para evitar chamadas repetidas à API do LLM, otimizando o uso do plano gratuito da Groq.
 
-1. **Interface (Odoo 19):** UI em HTML5/CSS3/JS, chat multi-sessão e dashboards.
-2. **Orquestração (FastAPI + CrewAI):** Microserviço que interpreta a linguagem natural e coordena os agentes.
-3. **Dados (PostgreSQL 18):** Persistência nativa do Odoo e estado das sessões de IA.
+## 🏗️ Arquitetura
 
----
+O sistema assenta numa arquitetura de 3 camadas:
+1. **Interface:** Módulo Odoo 19 (HTML/CSS/JS) acessível via browser.
+2. **Orquestração:** Microserviço FastAPI (Python 3.12) + CrewAI (0.175.0) + Groq (qwen/qwen3.8-27b).
+3. **Base de Dados:** PostgreSQL 18.
 
-## 🛠️ Tecnologias Utilizadas
+*(Para visualizar o diagrama completo, consulte o ficheiro `docs/specs/` ou o relatório PIC2.)*
 
-| Componente | Tecnologia | Versão | Justificação |
-| :--- | :--- | :--- | :--- |
-| **Plataforma** | Odoo Community | 19 | ERP com módulo de projetos e XML-RPC |
-| **Orquestração** | CrewAI | 0.175.0 | Framework multiagente com ferramentas |
-| **LLM Padrão** | Groq (qwen3.8-27b) | max_tokens=512 | Rápido, gratuito e de alta performance |
-| **Microserviço** | FastAPI | 0.115.6 | Framework web de alto desempenho |
-| **Backend** | Python | 3.12 | Linguagem do Odoo e CrewAI |
-| **Base de Dados** | PostgreSQL | 18 | Sistema de gestão do Odoo |
-| **Frontend** | HTML5, CSS3, JS | — | Interface leve e responsiva |
-| **Diagramas** | Mermaid.js | — | Renderização SVG no chat |
-| **CI/CD** | GitHub Actions | — | Lint + Pytest automáticos |
-
----
-
-## 🚦 Como Executar o Projeto
+## 🚀 Quick Start
 
 ### Pré-requisitos
-- WSL2 (Ubuntu 22.04+) ou Linux
-- Odoo 19 instalado (`/opt/odoo/odoo19`)
-- PostgreSQL 18
-- Python 3.12 (venv_agents)
+* Odoo 19 (Community) instalado e a correr na porta `8069`.
+* Python 3.12 e PostgreSQL 18.
+* Chave de API da Groq (`GROQ_API_KEY`).
 
-### Instalação e Arranque
-```bash
-# 1. Clonar o repositório
-git clone https://github.com/Denispy1998/project-agent-system-odoo.git
-cd project-agent-system-odoo
+### Configuração
+1. Clonar o repositório:
+   `git clone https://github.com/Denispy1998/project-agent-system-odoo.git`
+2. Copiar o `.env.example` para `.env` e preencher as tuas credenciais.
+3. Instalar dependências e arrancar o FastAPI:
+   `pip install -r agent/agents_api/requirements.txt`
+   `uvicorn agents_api.main:app --host 127.0.0.1 --port 8001`
 
-# 2. Configurar o ambiente virtual (venv_agents)
-python3.12 -m venv venv_agents
-source venv_agents/bin/activate
-pip install -r requirements.txt
+## 🧪 Qualidade e Testes
 
-# 3. Configurar as variáveis de ambiente (.env)
-# (Adicionar GROQ_API_KEY, ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASSWORD)
-
-# 4. Iniciar os serviços
-bash ~/start_all.sh
-```
-
----
-
-## 🧪 Testes e Certificação
-
-O ecossistema é validado de forma contínua através de:
-- **44 Testes Unitários:** Lógica do router, ferramentas e helpers.
-- **16 Testes de Integração (Smoke Test):** UI, API, RBAC e LLM.
-- **30 Pontos de Certificação End-to-End:** Validação completa do sistema em execução.
-- **Testes Enterprise:** Validação de idempotência das Macros e colaboração entre agentes.
-
-Para executar a certificação:
-```bash
-source venv_agents/bin/activate
-python tests/certify.py
-```
-
----
+O ecossistema é validado por uma suíte rigorosa de testes:
+* **44 Testes Unitários (Pytest):** Cobrem o router, ferramentas e orquestrador.
+* **16 Testes de Integração (Smoke Test):** Validam a comunicação com o Odoo.
+* **Certificação End-to-End (30/30):** Testa os 6 agentes, RBAC, e geração de diagramas.
+* **CI/CD:** GitHub Actions corre o Lint (Ruff) e os testes a cada push.
 
 ## 📚 Documentação Adicional
+* 📄 [Relatório Técnico e Limitações](docs/LIMITATIONS.md)
+* 📜 [Changelog de Engenharia (T1-T13)](docs/CHANGELOG_TECHNICAL.md)
+* 📐 [Especificações RSL/ASL](docs/specs/)
 
-- [Especificações RSL v3.2 e ASL v3.3](docs/specs/)
-- [Guia de Limitações (L1-L8)](docs/LIMITATIONS.md)
-- [Casos de Estudo Técnicos (T1-T11)](docs/CHANGELOG_TECHNICAL.md)
-
----
-
-## 👨‍💻 Autor
-
+## 👨‍🎓 Autor
 **Denilson Fragoso Da Silva Santos** (IST-1113142)
-*Mestrado em Engenharia Informática e de Computadores (MEIC)*
-Instituto Superior Técnico, Universidade de Lisboa
-*Orientador: Prof. Alberto Rodrigues da Silva*
-
----
-<div align="center">
-  <sub>Desenvolvido com ❤️ para a dissertação MEIC 2026/2027</sub>
-</div>
+* Orientador: Prof. Alberto Rodrigues da Silva
+* Instituto Superior Técnico, Universidade de Lisboa
+* Ano Letivo: 2026/2027
