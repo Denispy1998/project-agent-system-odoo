@@ -20,7 +20,9 @@ O objetivo principal é integrar agentes autónomos baseados em LLMs diretamente
 * **Router Híbrido (Regex + LLM):** ~90% dos comandos comuns são resolvidos localmente (latência de 0.05s) sem gastar tokens de LLM. O fallback para o CrewAI + Groq (LLM) só acontece para pedidos complexos.
 * **BackOffice de Governança:** Menu nativo no Odoo para gestão dinâmica de *System Prompts* (Templates), permitindo alterar a personalidade dos agentes sem tocar no código.
 * **Controlo de Acesso (RBAC) em 2 Camadas:** Validação na interface Odoo e verificação *server-side* (FastAPI) para prevenir falsificação de identidade (*spoofing*).
-* **Cache de Respostas (FastAPI):** Sistema de cache em memória (TTL de 5 minutos) para evitar chamadas repetidas à API do LLM, otimizando o uso do plano gratuito da Groq.
+* **Hard Guardrails e Workspaces:** Bloqueio de segurança a nível de código (ex: palavras proibidas) e gestão de agentes contextuais diretamente dentro de cada Projeto/Workspace.
+* **Cache Inteligente (FastAPI):** Sistema de cache em memória (TTL de 5 minutos) com *invalidação automática* em operações de escrita para garantir dados sempre frescos.
+* **Blindagem Thread-Safe:** Conexão XML-RPC isolada por thread (`threading.local()`) para suportar pedidos simultâneos sem falhas.
 
 ## 🏗️ Arquitetura
 
@@ -51,12 +53,12 @@ O sistema assenta numa arquitetura de 3 camadas:
 O ecossistema é validado por uma suíte rigorosa de testes:
 * **44 Testes Unitários (Pytest):** Cobrem o router, ferramentas e orquestrador.
 * **16 Testes de Integração (Smoke Test):** Validam a comunicação com o Odoo.
-* **Certificação End-to-End (30/30):** Testa os 6 agentes, RBAC, e geração de diagramas.
+* **Certificação End-to-End (30/30):** Testa os 6 agentes, RBAC, Cache, Guardrails e geração de diagramas.
 * **CI/CD:** GitHub Actions corre o Lint (Ruff) e os testes a cada push.
 
 ## 📚 Documentação Adicional
 * 📄 [Relatório Técnico e Limitações](docs/LIMITATIONS.md)
-* 📜 [Changelog de Engenharia (T1-T13)](docs/CHANGELOG_TECHNICAL.md)
+* 📜 [Changelog de Engenharia (T1-T15)](docs/CHANGELOG_TECHNICAL.md)
 * 📐 [Especificações RSL/ASL](docs/specs/)
 
 ## 👨‍🎓 Autor
