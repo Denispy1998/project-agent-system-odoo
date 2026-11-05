@@ -8,10 +8,12 @@ _logger = logging.getLogger(__name__)
 class ProjectProject(models.Model):
     _inherit = 'project.project'
 
+    # NOVO: Relação com Agentes (Workspace -> Agents)
+    ai_template_ids = fields.One2many('ai.template', 'workspace_id', string='AI Agents')
+
     @api.model
     def _send_weekly_report(self):
         """Generate and send a weekly ecosystem report email."""
-        # Read configuration from system parameters (fallbacks to defaults)
         ICP = self.env['ir.config_parameter'].sudo()
         recipient = ICP.get_param(
             'meu_assistente_ia.weekly_report_recipient',

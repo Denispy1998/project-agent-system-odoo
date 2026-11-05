@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Inherit the Project Form View to add the AI Agents tab -->
+        <record id="view_project_form_inherit_agents" model="ir.ui.view">
+            <field name="name">project.project.form.inherit.agents</field>
+            <field name="model">project.project</field>
+            <field name="inherit_id" ref="project.edit_project"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="AI Agents" name="ai_agents">
+                        <field name="ai_template_ids">
+                            <list string="Agents in this Workspace">
+                                <field name="name"/>
+                                <field name="model_name"/>
+                                <field name="temperature"/>
+                                <field name="active"/>
+                            </list>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -26,6 +26,7 @@ Author: Denilson Fragoso Da Silva Santos (IST-1113142)
         'security/ir.model.access.csv',
         'views/menu.xml',
         'views/task_views.xml',
+        'views/project_project_views.xml',
         'views/ai_template_views.xml',
         'data/ir_cron_data.xml',
     ],

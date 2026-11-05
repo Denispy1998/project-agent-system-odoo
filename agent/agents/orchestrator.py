@@ -3,6 +3,7 @@
 import os
 import time
 import logging
+import re
 from typing import Optional
 from crewai import Crew, Task, LLM
 from dotenv import load_dotenv
@@ -79,7 +80,26 @@ def _detect_diagram_intent(msg: str) -> bool:
     m = msg.lower()
     return any(k in m for k in _DIAGRAM_KEYWORDS)
 
-def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None) -> str:
+def _enforce_guardrails(message: str, guardrails: str) -> Optional[str]:
+    """
+    Hard Guardrail: Checks if the message violates any specific rules.
+    Extracts words in ALL CAPS from the guardrail text and checks if they are in the message.
+    """
+    if not guardrails or not guardrails.strip():
+        return None
+    
+    # Extrair palavras que estão em maiúsculas no guardrail (ex: "HACK")
+    forbidden_terms = re.findall(r'\b[A-Z_]{3,}\b', guardrails)
+    
+    for term in forbidden_terms:
+        if term.lower() in message.lower():
+            _logger.warning(f"[Guardrail] Blocked '{term}' in message.")
+            return f"DENIED by Guardrail: The term '{term}' is restricted by the active agent template rules."
+    
+    return None
+
+def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None) -> str:
+    # 1. Permission Guard (RBAC)
     write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit", "set ", "set\t", "mark ", "assign ", "setup", "simulate", "bulk", "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar", "definir", "marcar", "atribuir"]
     msg_lower = user_message.lower()
     wants_write = any(k in msg_lower for k in write_keywords)
@@ -87,20 +107,35 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
     if wants_write and not is_manager:
         return ("DENIED: You are signed in as a Team Member. Write operations require the 'Project Manager' role.")
 
+    # 2. Hard Guardrails (Code-level enforcement)
+    guardrail_violation = _enforce_guardrails(user_message, guardrails)
+    if guardrail_violation:
+        return guardrail_violation
+
+    # 3. Inject Guardrails into System Prompt (Soft enforcement for LLM)
+    if guardrails and guardrails.strip():
+        if system_prompt:
+            system_prompt = system_prompt + "\n\nRESTRIÇÕES E GUARDRAILS:\n" + guardrails
+        else:
+            system_prompt = "RESTRIÇÕES E GUARDRAILS:\n" + guardrails
+
     max_attempts = 3
     backoff_schedule = [30, 60, 120]
     crew = None
 
+    # 4. Local Router
     local_result = try_route(user_message)
     if local_result is not None:
         _logger.info("Routed locally (no LLM call)")
         return local_result
 
+    # 5. Off-topic Guardrail
     off_topic_keywords = ["poem", "poema", "cook", "cozinhar", "recipe", "receita", "weather", "clima", "joke", "piada", "story", "história", "filme", "movie"]
     if any(k in msg_lower for k in off_topic_keywords):
         _logger.info("Off-topic blocked locally (no LLM call)")
         return ("INFO: I am a Project Management AI Assistant. I can only help with projects, tasks, risks, and reports.")
 
+    # 6. Diagram Shortcut
     if _detect_diagram_intent(user_message):
         try:
             from tools.mermaid_tools import generate_mermaid_diagram
@@ -109,6 +144,7 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
         except Exception as e:
             _logger.error(f"Diagram shortcut failed: {e}")
 
+    # 7. LLM Fallback
     for attempt in range(1, max_attempts + 1):
         try:
             llm = get_llm(model_name)

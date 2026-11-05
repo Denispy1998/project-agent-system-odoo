@@ -68,3 +68,11 @@ Este documento cataloga os casos técnicos (T1-T13) de problemas encontrados, so
 *   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
 *   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
 *   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
+
+### T14: Implementação de Hard Guardrails e Workspace Agents (v2.9.7)
+* **Problema:** Os guardrails definidos no BackOffice eram apenas injetados no prompt (soft guardrails), o que permitia ao Router Local (Regex) executar ações maliciosas sem consultar o LLM.
+* **Solução:** Implementação de Hard Guardrails no `orchestrator.py`, intercetando palavras proibidas antes de qualquer execução. Criação da aba "AI Agents" no Workspace (Projeto Odoo).
+
+### T15: Blindagem contra Concorrência, Cache Invalidation e Payloads Gigantes (v3.0.0)
+* **Problema:** Sob stress (10 pedidos), o FastAPI falhava com `ResponseNotReady`. O Cache servia respostas antigas após alterações de estado.
+* **Solução:** `threading.local()` no XML-RPC, `Field(max_length=2000)` no Pydantic e `CACHE_DB.clear()` em operações de escrita. Certificação final: 30/30 PASS.

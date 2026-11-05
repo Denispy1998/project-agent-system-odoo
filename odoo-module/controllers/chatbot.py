@@ -29,12 +29,14 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None):
+def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None):
     try:
         payload = {"message": message, "user_id": user_id,
                    "is_manager": is_manager, "model_name": model_name}
         if system_prompt:
             payload["system_prompt"] = system_prompt
+        if guardrails:
+            payload["guardrails"] = guardrails
         r = requests.post(
             AGENT_API_URL,
             json=payload,
@@ -1062,14 +1064,16 @@ class ChatbotController(http.Controller):
                     model_name = session.model_name or "groq"
 
             system_prompt = None
+            guardrails = None
             if template_id:
                 tmpl = request.env['ai.template'].sudo().browse(int(template_id))
                 if tmpl.exists():
                     system_prompt = tmpl.prompt_template
+                    guardrails = tmpl.guardrails
 
             _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

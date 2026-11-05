@@ -26,20 +26,21 @@ ODOO_DB = os.getenv("ODOO_DB", "odoo")
 ODOO_USER = os.getenv("ODOO_USER", "admin")
 ODOO_PASSWORD = os.getenv("ODOO_PASSWORD", "admin")
 
-_connection = None
+import threading
+_thread_local = threading.local()
 
 
 def _get_connection():
-    global _connection
-    if _connection is not None:
-        return _connection
+    # Thread-safe connection pool
+    if hasattr(_thread_local, "connection"):
+        return _thread_local.connection
     common = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/common")
     uid = common.authenticate(ODOO_DB, ODOO_USER, ODOO_PASSWORD, {})
     if not uid:
         raise ConnectionError("Odoo authentication failed")
     models = xmlrpc.client.ServerProxy(f"{ODOO_URL}/xmlrpc/2/object")
-    _connection = (common, uid, models)
-    return _connection
+    _thread_local.connection = (common, uid, models)
+    return _thread_local.connection
 
 
 def _call(model: str, method: str, args: list, kwargs: dict = None):

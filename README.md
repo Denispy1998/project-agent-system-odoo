@@ -1,11 +1,11 @@
-# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos
+# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos (v3.0.0)
 
 [![Odoo 19](https://img.shields.io/badge/Odoo-19-875A7B.svg)](https://www.odoo.com/)
 [![CrewAI](https://img.shields.io/badge/CrewAI-0.175.0-FF6B6B.svg)](https://github.com/joaomdmoura/crewAI)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688.svg)](https://fastapi.tiangolo.com/)
 [![Tests](https://img.shields.io/badge/Tests-44%20Passed-success.svg)]()
-[![Certification](https://img.shields.io/badge/Certification-30%2F30-success.svg)]()
+[![Certification](https://img.shields.io/badge/Certification-30%2F30-brightgreen.svg)]()
 
 Este repositório contém o código-fonte do ecossistema multiagente de Inteligência Artificial desenvolvido para a dissertação do Mestrado em Engenharia Informática e de Computadores (MEIC) do Instituto Superior Técnico (IST).
 
