@@ -63,7 +63,7 @@ def _find_project(name: str):
     if ids:
         return ids[0]
     ids = _call('project.project', 'search',
-                [[('name', 'ilike', name)]], {'order': 'id asc', 'limit': 1})
+                [[('name', '=ilike', name)]], {'order': 'id asc', 'limit': 1})
     return ids[0] if ids else None
 
 
@@ -77,7 +77,7 @@ def _find_task(project_id: int, task_name: str):
     if ids:
         return ids[0]
     ids = _call('project.task', 'search',
-                [[('project_id', '=', project_id), ('name', 'ilike', task_name)]],
+                [[('project_id', '=', project_id), ('name', '=ilike', task_name)]],
                 {'limit': 1})
     return ids[0] if ids else None
 
@@ -91,7 +91,7 @@ def _find_stage(project_id: int, stage_name: str):
     if ids:
         return ids[0]
     ids = _call('project.task.type', 'search',
-                [[('name', 'ilike', stage_name), ('project_ids', 'in', [project_id])]])
+                [[('name', '=ilike', stage_name), ('project_ids', 'in', [project_id])]])
     return ids[0] if ids else None
 
 
@@ -383,7 +383,7 @@ def delete_task(project_name: str, task_name: str) -> str:
                 [[('project_id', '=', proj_id), ('name', '=', task_name)]])
     if not ids:
         ids = _call('project.task', 'search',
-                    [[('project_id', '=', proj_id), ('name', 'ilike', task_name)]])
+                    [[('project_id', '=', proj_id), ('name', '=ilike', task_name)]])
     if not ids:
         return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
     _call('project.task', 'unlink', [ids])
@@ -600,7 +600,7 @@ def list_agent_templates() -> str:
 def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
     """Creates a complete Agile project: 1 project, 3 standard stages, and tasks."""
     try:
-        existing = _call('project.project', 'search', [[('name', 'ilike', project_name)]])
+        existing = _call('project.project', 'search', [[('name', '=ilike', project_name)]])
         if existing:
             return f"SUCCESS: Project '{project_name}' is already set up (ID {existing[0]}). No new data was created."
             
@@ -669,7 +669,7 @@ def simulate_delay(project_name: str, task_name: str, delay_days: int) -> str:
         
     try:
         # Encontrar a tarefa
-        task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id), ('name', 'ilike', task_name)]])
+        task_ids = _call('project.task', 'search', [[('project_id', '=', proj_id), ('name', '=ilike', task_name)]])
         if not task_ids:
             return f"ERROR: Task '{task_name}' not found in project '{project_name}'."
             
