@@ -1,23 +1,17 @@
 # -*- coding: utf-8 -*-
 """Odoo XML-RPC Tools for CrewAI agents.
-All write tools are IDEMPOTENT with UNIFIED responses."""
-import xmlrpc.client
-import os
-import logging
-from dotenv import load_dotenv
-from crewai.tools import tool
-
-_logger = logging.getLogger(__name__)
-
-# -*- coding: utf-8 -*-
-"""Odoo XML-RPC Tools for CrewAI agents.
 All write tools are IDEMPOTENT with UNIFIED responses: the same message is
 returned whether the object was just created or already existed.
 """
 import xmlrpc.client
 import os
+import logging
+import threading
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from crewai.tools import tool
+
+_logger = logging.getLogger(__name__)
 
 load_dotenv('/home/denispy/project-agent-system/.env')
 
@@ -26,7 +20,6 @@ ODOO_DB = os.getenv("ODOO_DB", "odoo")
 ODOO_USER = os.getenv("ODOO_USER", "admin")
 ODOO_PASSWORD = os.getenv("ODOO_PASSWORD", "admin")
 
-import threading
 _thread_local = threading.local()
 
 
@@ -616,7 +609,6 @@ def setup_agile_project(project_name: str, tasks_csv: str = "") -> str:
             
         created_tasks = []
         for t_name in task_list:
-            from datetime import datetime, timedelta
             default_deadline = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
             
             _call('project.task', 'create', [{
@@ -696,7 +688,6 @@ def simulate_delay(project_name: str, task_name: str, delay_days: int) -> str:
         
         # Verificar o impacto (SINTAXE CORRETA: lista de campos)
         all_tasks = _call('project.task', 'search', [[('project_id', '=', proj_id)]])
-        _call('project.task', 'read', [all_tasks, ['name', 'date_deadline']])
         
         return f"SUCCESS: Task '{task_name}' delayed by {delay_days} days. New deadline: {new_date.strftime('%Y-%m-%d')}. Impact analysis: The project timeline has been recalculated."
     except Exception as e:
@@ -711,7 +702,6 @@ def scan_project_risks(project_name: str, days_threshold: int = 3) -> str:
         return f"ERROR: Project '{project_name}' not found."
         
     try:
-        from datetime import datetime, timedelta
         today = datetime.now()
         threshold_date = today + timedelta(days=days_threshold)
         

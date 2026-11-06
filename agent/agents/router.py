@@ -19,6 +19,7 @@ from tools.odoo_tools import (
     move_single_task, move_all_tasks,
     delete_task, delete_stage, delete_project,
     set_task_status,
+    setup_agile_project, bulk_move_tasks, simulate_delay, scan_project_risks,
 )
 
 # ---------------------------------------------------------------------------
@@ -157,6 +158,25 @@ PATTERNS = [
      lambda m: create_stage.func(
          project_name=_clean_name(m.group(4)),
          stage_name=_clean_name(m.group(2)))),
+
+    # MACROS (v3.0.0) ------------------------------------------------------
+    (re.compile(r"^\s*create\s+agile\s+project\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: setup_agile_project.func(project_name=_clean_name(m.group(1)))),
+
+    (re.compile(r"^\s*move\s+all\s+tasks\s+from\s+[\"']?(.+?)[\"']?\s+to\s+[\"']?(.+?)[\"']?\s+in\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: bulk_move_tasks.func(
+         project_name=_clean_name(m.group(3)),
+         from_stage=_clean_name(m.group(1)),
+         to_stage=_clean_name(m.group(2)))),
+
+    (re.compile(r"^\s*simulate\s+(a\s+)?delay\s+of\s+(\d+)\s+days\s+for\s+task\s+[\"']?(.+?)[\"']?\s+in\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: simulate_delay.func(
+         project_name=_clean_name(m.group(4)),
+         task_name=_clean_name(m.group(3)),
+         delay_days=int(m.group(2)))),
+
+    (re.compile(r"^\s*scan\s+(for\s+)?risks?\s+in\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: scan_project_risks.func(project_name=_clean_name(m.group(2)))),
 ]
 
 
