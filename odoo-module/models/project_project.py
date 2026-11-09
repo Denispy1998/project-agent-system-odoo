@@ -49,7 +49,7 @@ class ProjectProject(models.Model):
         lines.append("</ul>")
         lines.append(
             "<p style='color:#9ca3af;font-size:0.85em;'>"
-            "Generated automatically by AI Project Management Ecosystem v2.9.0"
+            "Generated automatically by AI Project Management Ecosystem v3.0.0"
             "</p>"
         )
         body_html = "".join(lines)
@@ -58,14 +58,14 @@ class ProjectProject(models.Model):
             f"[Weekly Report] Generated for {len(projects)} projects, {total_tasks} tasks"
         )
 
-        mail = self.env['mail.mail'].create({
+        mail = self.env['mail.mail'].sudo().create({
             'subject': f'Weekly AI Ecosystem Report — {fields.Date.today()}',
             'body_html': body_html,
             'email_to': recipient,
             'email_from': sender,
         })
         try:
-            mail.send()
+            mail.sudo().send()
             _logger.info(f"[Weekly Report] Mail sent to {recipient}")
         except Exception as e:
             _logger.warning(f"[Weekly Report] Could not send mail: {e}")

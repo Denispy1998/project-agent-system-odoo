@@ -306,6 +306,12 @@ except ImportError:
 
 
 def _generate_pdf(projeto_id):
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    import re
+    import html
+
     Project = request.env['project.project']
     Task = request.env['project.task']
     project = Project.browse(projeto_id)
@@ -321,97 +327,77 @@ def _generate_pdf(projeto_id):
         return "\n".join(lines).encode('utf-8')
 
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-    primary = HexColor("#714B67")
-    light = HexColor("#875A7A")
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    elements = []
+    styles = getSampleStyleSheet()
 
-    c.setFillColor(primary)
-    c.rect(0, height - 3.5 * cm, width, 3.5 * cm, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(2 * cm, height - 2 * cm, f"{project.name}")
-    c.setFont("Helvetica", 11)
-    c.drawString(2 * cm, height - 2.8 * cm, "AI Project Management Ecosystem — Report")
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], textColor=HexColor("#714B67"), spaceAfter=12)
+    normal_style = styles['Normal']
+    cell_style = ParagraphStyle('Cell', parent=styles['Normal'], fontSize=9, leading=11)
 
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10)
-    c.drawString(2 * cm, height - 4.5 * cm, f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    c.drawString(2 * cm, height - 5 * cm, f"Description: {project.description or 'No description'}")
+    elements.append(Paragraph(html.escape(project.name), title_style))
+    elements.append(Paragraph("AI Project Management Ecosystem — Report", styles['Italic']))
+    elements.append(Spacer(1, 12))
+
+    clean_desc = re.sub('<[^<]+?>', '', project.description or 'No description')
+    elements.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}", normal_style))
+    elements.append(Paragraph(f"<b>Description:</b> {html.escape(clean_desc)}", normal_style))
+    elements.append(Spacer(1, 12))
 
     tasks = Task.search([('project_id', '=', project.id)])
-    y = height - 6 * cm
-    c.setFillColor(primary)
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(2 * cm, y, f"Tasks ({len(tasks)})")
-    y -= 0.8 * cm
+    elements.append(Paragraph(f"Tasks ({len(tasks)})", styles['Heading2']))
 
-    c.setFillColor(light)
-    c.rect(2 * cm, y - 0.3 * cm, width - 4 * cm, 0.6 * cm, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(2.2 * cm, y - 0.1 * cm, "Name")
-    c.drawString(8 * cm, y - 0.1 * cm, "Stage")
-    c.drawString(12 * cm, y - 0.1 * cm, "Assignee")
-    c.drawString(16 * cm, y - 0.1 * cm, "Created")
-    y -= 0.7 * cm
-
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica", 9)
-    for i, t in enumerate(tasks):
-        if y < 3 * cm:
-            c.showPage()
-            y = height - 2 * cm
-            c.setFont("Helvetica", 9)
-            c.setFillColor(colors.black)
-        if i % 2 == 0:
-            c.setFillColor(HexColor("#F8F9FC"))
-            c.rect(2 * cm, y - 0.2 * cm, width - 4 * cm, 0.5 * cm, fill=1, stroke=0)
-            c.setFillColor(colors.black)
+    data = [['Name', 'Stage', 'Assignee', 'Created']]
+    for t in tasks:
         stage = t.stage_id.name if t.stage_id else "—"
         assignee = t.create_uid.name if t.create_uid else "—"
         created = t.create_date.strftime('%d/%m/%Y') if t.create_date else "—"
-        c.drawString(2.2 * cm, y, (t.name or "")[:40])
-        c.drawString(8 * cm, y, stage[:20])
-        c.drawString(12 * cm, y, assignee[:20])
-        c.drawString(16 * cm, y, created)
-        y -= 0.5 * cm
+        data.append([
+            Paragraph(html.escape(t.name or ""), cell_style),
+            Paragraph(html.escape(stage), cell_style),
+            Paragraph(html.escape(assignee), cell_style),
+            Paragraph(created, cell_style)
+        ])
 
-    y -= 0.5 * cm
-    if y < 4 * cm:
-        c.showPage()
-        y = height - 2 * cm
-    c.setFillColor(primary)
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(2 * cm, y, "Risk Analysis")
-    y -= 0.8 * cm
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica", 11)
+    if len(data) > 1:
+        table = Table(data, colWidths=[6*cm, 4*cm, 4*cm, 3*cm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), HexColor("#875A7A")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, HexColor("#F8F9FC")]),
+        ]))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("No tasks found.", normal_style))
+
+    elements.append(Spacer(1, 20))
+
+    elements.append(Paragraph("Risk Analysis", styles['Heading2']))
     total = len(tasks)
     no_stage = sum(1 for t in tasks if not t.stage_id)
     risk = (no_stage / total * 100) if total else 0
-    c.drawString(2 * cm, y, f"Total tasks: {total}")
-    y -= 0.6 * cm
-    c.drawString(2 * cm, y, f"Tasks without stage: {no_stage} ({risk:.1f}%)")
-    y -= 0.6 * cm
+
+    elements.append(Paragraph(f"<b>Total tasks:</b> {total}", normal_style))
+    elements.append(Paragraph(f"<b>Tasks without stage:</b> {no_stage} ({risk:.1f}%)", normal_style))
+
     if risk > 70:
-        c.setFillColor(HexColor("#DC2626"))
-        rec = "HIGH RISK — Prioritize stage definition immediately."
+        rec = "<font color='#DC2626'><b>HIGH RISK — Prioritize stage definition immediately.</b></font>"
     elif risk > 40:
-        c.setFillColor(HexColor("#D97706"))
-        rec = "MEDIUM RISK — Consider assigning stages."
+        rec = "<font color='#D97706'><b>MEDIUM RISK — Consider assigning stages.</b></font>"
     else:
-        c.setFillColor(HexColor("#059669"))
-        rec = "LOW RISK — Project is well organized."
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(2 * cm, y, rec)
+        rec = "<font color='#059669'><b>LOW RISK — Project is well organized.</b></font>"
+    elements.append(Paragraph(rec, normal_style))
 
-    c.setFillColor(HexColor("#9CA3AF"))
-    c.setFont("Helvetica", 8)
-    c.drawString(2 * cm, 1 * cm, "Generated by AI Project Management Ecosystem v3.0.0 — Denilson Fragoso Da Silva Santos (IST-1113142)")
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle('Footer', parent=styles['Normal'], textColor=HexColor("#9CA3AF"), fontSize=8)
+    elements.append(Paragraph("Generated by AI Project Management Ecosystem v3.0.0 — Denilson Fragoso Da Silva Santos (IST-1113142)", footer_style))
 
-    c.showPage()
-    c.save()
+    doc.build(elements)
     buffer.seek(0)
     return buffer.read()
 
@@ -495,7 +481,7 @@ class ChatbotController(http.Controller):
         <div class="container" style="padding-top: 70px; padding-bottom: 10px;">
             <div class="home-hero">
                 <h1><i class="fas fa-robot"></i> AI Ecosystem</h1>
-                <p>Multi-Agent Project Management · v2.9.0</p>
+                <p>Multi-Agent Project Management · v3.0.0</p>
                 <div class="home-role-pill">
                     <i class="fas {role_icon}"></i>
                     <span>Signed in as <strong>{user.name}</strong> · {role_label}</span>
