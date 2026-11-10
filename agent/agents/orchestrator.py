@@ -99,15 +99,15 @@ def _enforce_guardrails(message: str, guardrails: str) -> Optional[str]:
     """
     if not guardrails or not guardrails.strip():
         return None
-    
+
     # Extrair palavras que estão em maiúsculas no guardrail (ex: "HACK")
     forbidden_terms = re.findall(r'\b[A-Z_]{3,}\b', guardrails)
-    
+
     for term in forbidden_terms:
         if term.lower() in message.lower():
             _logger.warning(f"[Guardrail] Blocked '{term}' in message.")
             return f"DENIED by Guardrail: The term '{term}' is restricted by the active agent template rules."
-    
+
     return None
 
 def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None) -> str:

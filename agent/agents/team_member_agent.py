@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from crewai import Agent
+from tools.jira_tools import list_jira_projects
 from tools.odoo_tools import (
     list_projects, list_tasks, list_stages, analyze_risks,
     prioritize_tasks, project_summary,
@@ -16,7 +17,7 @@ def get_team_member_agent(llm, system_prompt=None) -> Agent:
     return Agent(
         role="Team Member", goal="Read project data from Odoo.",
         backstory=backstory,
-        tools=[
+        tools=[list_jira_projects, 
             list_projects, list_tasks, list_stages, analyze_risks,
             prioritize_tasks, project_summary,
         ],

@@ -44,3 +44,8 @@ backup_*/
 
 # ===== Reports (kept local — not for public repo) =====
 docs/report/
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/

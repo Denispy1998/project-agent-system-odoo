@@ -12,6 +12,7 @@ queries).
 import re
 from typing import Optional
 
+from tools.jira_tools import list_jira_projects, create_jira_issue
 from tools.odoo_tools import (
     list_projects, list_tasks, list_stages,
     analyze_risks, prioritize_tasks, project_summary,
@@ -177,6 +178,15 @@ PATTERNS = [
 
     (re.compile(r"^\s*scan\s+(for\s+)?risks?\s+in\s+(?:project\s+)?[\"']?(.+?)[\"']?\s*$", re.I),
      lambda m: scan_project_risks.func(project_name=_clean_name(m.group(2)))),
+
+    # JIRA MACROS ----------------------------------------------------------
+    (re.compile(r"^\s*(list|show|display)\s+(all\s+)?jira\s+projects?\s*$", re.I),
+     lambda m: list_jira_projects.func()),
+
+    (re.compile(r"^\s*create\s+jira\s+(task|issue)\s+[\"']?(.+?)[\"']?\s+in\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: create_jira_issue.func(
+         project_key=_clean_name(m.group(3)),
+         summary=_clean_name(m.group(2)))),
 ]
 
 
