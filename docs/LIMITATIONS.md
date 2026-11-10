@@ -10,3 +10,7 @@ Estas limitações estão documentadas de forma honesta para garantir o rigor ci
 * **L6 — RSL/ASL são documentação, não geram código:** As especificações RSL v3.2 e ASL v3.3 estão validadas no ITLingoCloud com 0 erros, mas não são consumidas por geradores automáticos.
 * **L7 — UI server-rendered (f-strings Python):** O deployment é trivial, mas a alteração de HTML/CSS requer a modificação das f-strings no `chatbot.py`.
 * **L8 — Ficheiros Docker são artefactos de referência:** Os ficheiros `Dockerfile.agents` e `docker-compose` não foram testados end-to-end; o deployment primário é a execução direta em WSL2.
+
+* **L9 — Restrições de Rede (VPN):** O sistema depende de APIs externas (Groq, Gemini, OpenRouter). Se a rede do utilizador estiver a usar uma VPN, a Groq pode bloquear o IP com um erro `Access denied`, ativando o fallback. O sistema está preparado para degradação graciosa, mas a conectividade direta é necessária para o Multi-LLM funcionar.
+* **L10 — Depreciação de Modelos Gratuitos:** O OpenRouter e o Gemini podem remover ou tornar pagos os seus modelos gratuitos (ex: `meta-llama/llama-3.3-8b-instruct:free`) sem aviso prévio. O código tem de ser atualizado para apontar para um novo modelo disponível sempre que isto ocorrer.
+* **L11 — Limites da API do Jira:** A integração com o Jira usa a REST API v3. O Jira impõe limites de requisições (rate limits) dependendo do plano (Free vs Standard). Além disso, a criação de issues exige que os campos obrigatórios (ex: tipo de issue) estejam corretamente configurados no projeto Jira.
