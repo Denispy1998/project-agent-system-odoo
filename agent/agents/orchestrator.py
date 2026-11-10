@@ -16,7 +16,7 @@ from agents.reporting_agent import get_reporting_agent
 from agents.diagram_agent import get_diagram_agent
 from agents.router import try_route
 
-load_dotenv('/home/denispy/project-agent-system/.env')
+load_dotenv('/home/denispy/project-agent-system/.env', override=True)
 _logger = logging.getLogger(__name__)
 
 def _valid_key(key):
@@ -30,18 +30,30 @@ def _valid_key(key):
     return True
 
 def get_llm(model_name: str = "groq"):
-    if model_name == "openai":
+    if model_name == "openrouter":
         key = os.getenv("OPENAI_API_KEY")
         if _valid_key(key):
-            return LLM(model="openai/gpt-4o", temperature=0.0, api_key=key)
-        _logger.warning("OpenAI key invalid/missing -> fallback to Groq")
+            # Usar o prefixo openai/ e api_base para contornar o catálogo do LiteLLM
+            return LLM(
+                model="openai/nvidia/nemotron-3-ultra-550b-a55b:free",
+                temperature=0.0,
+                api_base="https://openrouter.ai/api/v1",
+                api_key=key,
+            )
+        _logger.warning(f"OpenRouter key invalid/missing (value starts with: {str(key)[:10]}) -> fallback to Groq")
         return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
-    if model_name == "anthropic":
-        key = os.getenv("ANTHROPIC_API_KEY")
+    if model_name == "gemini":
+        key = os.getenv("GEMINI_API_KEY")
         if _valid_key(key):
-            return LLM(model="anthropic/claude-3-5-sonnet-20241022", temperature=0.0, api_key=key)
-        _logger.warning("Anthropic key invalid/missing -> fallback to Groq")
+            # Usar o endpoint compatível com OpenAI do Gemini para evitar problemas de schema de ferramentas
+            return LLM(
+                model="openai/gemini-3.6-flash",
+                temperature=0.0,
+                api_key=key,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
+        _logger.warning("Gemini key invalid/missing -> fallback to Groq")
         return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
     return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))

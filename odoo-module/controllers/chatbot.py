@@ -736,8 +736,8 @@ class ChatbotController(http.Controller):
         return (_html + mode_badge + """
             <select id="modelSelect" onchange="changeModel()">
                 <option value="groq">Groq · Qwen 3.8 27B</option>
-                <option value="openai">OpenAI · GPT-4o</option>
-                <option value="anthropic">Anthropic · Claude 3.5</option>
+                <option value="openrouter">OpenRouter · Nemotron 3 Ultra (Free)</option>
+                <option value="gemini">Google · Gemini 3.6 Flash</option>
             </select>
             <select id="templateSelect" style="margin-left: 10px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; background: white; color: #333; font-size: 0.9em;">
                 <option value="">-- No Template (Default) --</option>
