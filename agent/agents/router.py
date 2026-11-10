@@ -12,7 +12,7 @@ queries).
 import re
 from typing import Optional
 
-from tools.jira_tools import list_jira_projects, create_jira_issue
+from tools.jira_tools import list_jira_projects, create_jira_issue, update_jira_issue, delete_jira_issue, move_jira_issue
 from tools.odoo_tools import (
     list_projects, list_tasks, list_stages,
     analyze_risks, prioritize_tasks, project_summary,
@@ -187,6 +187,19 @@ PATTERNS = [
      lambda m: create_jira_issue.func(
          project_key=_clean_name(m.group(3)),
          summary=_clean_name(m.group(2)))),
+
+    (re.compile(r"^\s*update\s+jira\s+(task|issue)\s+[\"']?(.+?)[\"']?\s+(title|summary)\s+to\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: update_jira_issue.func(
+         issue_key=_clean_name(m.group(2)),
+         summary=_clean_name(m.group(4)))),
+
+    (re.compile(r"^\s*delete\s+jira\s+(task|issue)\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: delete_jira_issue.func(issue_key=_clean_name(m.group(2)))),
+
+    (re.compile(r"^\s*move\s+jira\s+(task|issue)\s+[\"']?(.+?)[\"']?\s+to\s+[\"']?(.+?)[\"']?\s*$", re.I),
+     lambda m: move_jira_issue.func(
+         issue_key=_clean_name(m.group(2)),
+         target_status=_clean_name(m.group(3)))),
 ]
 
 

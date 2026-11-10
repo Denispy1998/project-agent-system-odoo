@@ -481,7 +481,7 @@ class ChatbotController(http.Controller):
         <div class="container" style="padding-top: 70px; padding-bottom: 10px;">
             <div class="home-hero">
                 <h1><i class="fas fa-robot"></i> AI Ecosystem</h1>
-                <p>Multi-Agent Project Management · v3.1.0</p>
+                <p>Multi-Agent Project Management · v3.2.0</p>
                 <div class="home-role-pill">
                     <i class="fas {role_icon}"></i>
                     <span>Signed in as <strong>{user.name}</strong> · {role_label}</span>

@@ -1,4 +1,4 @@
-# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos (v3.1.0)
+# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos (v3.2.0)
 
 [![Odoo 19](https://img.shields.io/badge/Odoo-19-875A7B.svg)](https://www.odoo.com/)
 [![CrewAI](https://img.shields.io/badge/CrewAI-0.175.0-FF6B6B.svg)](https://github.com/joaomdmoura/crewAI)

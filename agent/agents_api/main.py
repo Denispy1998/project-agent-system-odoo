@@ -12,7 +12,7 @@ from agents.orchestrator import run_orchestrator
 from tools.odoo_tools import verify_user_is_manager, _call as _odoo_call
 
 app = FastAPI(title='Project Agent API')
-API_VERSION = '3.1.0'
+API_VERSION = '3.2.0'
 
 CACHE_DB = {}
 CACHE_TTL = 300

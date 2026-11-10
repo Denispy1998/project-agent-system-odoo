@@ -74,3 +74,86 @@ def create_jira_issue(project_key: str, summary: str, description: str = "", iss
         return f"ERROR: HTTP {e.response.status_code} - {e.response.text}"
     except Exception as e:
         return f"ERROR: Failed to create Jira issue: {str(e)}"
+
+@tool("update_jira_issue")
+def update_jira_issue(issue_key: str, summary: str = "", description: str = "") -> str:
+    """Update an existing Jira issue. Requires the issue key (e.g., 'KAN-4'). You can update the summary and/or description."""
+    try:
+        headers = _get_headers()
+        payload = {"fields": {}}
+        
+        if summary:
+            payload["fields"]["summary"] = summary
+            
+        if description:
+            payload["fields"]["description"] = {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": description}]
+                    }
+                ]
+            }
+            
+        if not payload["fields"]:
+            return "ERROR: You must provide either a new summary or a new description to update."
+
+        response = requests.put(f"{JIRA_URL}/rest/api/3/issue/{issue_key}", headers=headers, json=payload, timeout=10)
+        response.raise_for_status()
+        return f"SUCCESS: Jira Issue '{issue_key}' updated successfully. Action complete."
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            return f"ERROR: Issue '{issue_key}' not found in Jira."
+        return f"ERROR: HTTP {e.response.status_code} - {e.response.text}"
+    except Exception as e:
+        return f"ERROR: Failed to update Jira issue: {str(e)}"
+
+@tool("delete_jira_issue")
+def delete_jira_issue(issue_key: str) -> str:
+    """Delete an existing Jira issue. Requires the issue key (e.g., 'KAN-4')."""
+    try:
+        headers = _get_headers()
+        response = requests.delete(f"{JIRA_URL}/rest/api/3/issue/{issue_key}", headers=headers, timeout=10)
+        response.raise_for_status()
+        return f"SUCCESS: Jira Issue '{issue_key}' deleted successfully. Action complete."
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            return f"ERROR: Issue '{issue_key}' not found in Jira."
+        return f"ERROR: HTTP {e.response.status_code} - {e.response.text}"
+    except Exception as e:
+        return f"ERROR: Failed to delete Jira issue: {str(e)}"
+
+@tool("move_jira_issue")
+def move_jira_issue(issue_key: str, target_status: str) -> str:
+    """Move a Jira issue to a new status/column (e.g., 'In Progress', 'Done'). Requires the issue key and the target status name."""
+    try:
+        headers = _get_headers()
+        # 1. Get available transitions for this issue
+        res = requests.get(f"{JIRA_URL}/rest/api/3/issue/{issue_key}/transitions", headers=headers, timeout=10)
+        res.raise_for_status()
+        transitions = res.json().get("transitions", [])
+
+        # 2. Find the transition that leads to the target status
+        target_lower = target_status.lower()
+        transition_id = None
+        for t in transitions:
+            if t['name'].lower() == target_lower or t['to']['name'].lower() == target_lower:
+                transition_id = t['id']
+                break
+
+        if not transition_id:
+            available = [f"{t['name']} (-> {t['to']['name']})" for t in transitions]
+            return f"ERROR: Transition to '{target_status}' not found. Available transitions: {', '.join(available)}"
+
+        # 3. Execute transition
+        payload = {"transition": {"id": transition_id}}
+        requests.post(f"{JIRA_URL}/rest/api/3/issue/{issue_key}/transitions", headers=headers, json=payload, timeout=10).raise_for_status()
+        return f"SUCCESS: Jira Issue '{issue_key}' moved to '{target_status}'. Action complete."
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            return f"ERROR: Issue '{issue_key}' not found."
+        return f"ERROR: HTTP {e.response.status_code} - {e.response.text}"
+    except Exception as e:
+        return f"ERROR: Failed to move Jira issue: {str(e)}"
