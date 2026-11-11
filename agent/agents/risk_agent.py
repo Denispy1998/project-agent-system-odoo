@@ -16,5 +16,5 @@ def get_risk_agent(llm, system_prompt=None) -> Agent:
         goal="Evaluate project risks.",
         backstory=backstory,
         tools=[analyze_risks, scan_project_risks], # Apenas 2 ferramentas
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )

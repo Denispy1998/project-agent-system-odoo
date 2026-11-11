@@ -14,5 +14,5 @@ def get_reporting_agent(llm, system_prompt=None) -> Agent:
         role="Reporting Agent", goal="Generate status reports and risk analyses.",
         backstory=backstory,
         tools=[project_summary, analyze_risks, list_tasks],
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )

@@ -168,10 +168,10 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
                 task_desc = f"Generate a Mermaid diagram for: {user_message}"
             elif "planner" in sp_lower or "planeamento" in sp_lower:
                 agent = get_planning_agent(llm, system_prompt)
-                task_desc = f"Create a project plan for: {user_message}"
+                task_desc = user_message
             elif "auditor" in sp_lower or "risco" in sp_lower:
                 agent = get_risk_agent(llm, system_prompt)
-                task_desc = f"Evaluate risks for: {user_message}"
+                task_desc = user_message
             elif agent_type == "reporting":
                 agent = get_reporting_agent(llm, system_prompt)
                 task_desc = f"Generate a status report for: {user_message}"

@@ -25,8 +25,8 @@ WRITE_KEYWORDS = [
     "definir", "marcar", "atribuir"
 ]
 
-def get_cache_key(message, user_id, is_manager, system_prompt, guardrails):
-    return f"{user_id}_{is_manager}_{system_prompt}_{guardrails}_{message}"
+def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails):
+    return f"{user_id}_{is_manager}_{model_name}_{system_prompt}_{guardrails}_{message}"
 
 def get_cached_response(key):
     if key in CACHE_DB:
@@ -72,7 +72,7 @@ def run_agent(req: ChatRequest):
     else:
         effective_is_manager = False
 
-    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.system_prompt, req.guardrails)
+    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails)
     cached_result = get_cached_response(cache_key)
 
     if cached_result:

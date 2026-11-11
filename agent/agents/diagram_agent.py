@@ -14,5 +14,5 @@ def get_diagram_agent(llm, system_prompt=None) -> Agent:
         role="Diagram Agent", goal="Generate Mermaid diagrams.",
         backstory=backstory,
         tools=[generate_mermaid_diagram], # Ferramenta adicionada!
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )

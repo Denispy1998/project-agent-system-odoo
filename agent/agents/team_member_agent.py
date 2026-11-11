@@ -21,5 +21,5 @@ def get_team_member_agent(llm, system_prompt=None) -> Agent:
             list_projects, list_tasks, list_stages, analyze_risks,
             prioritize_tasks, project_summary,
         ],
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )

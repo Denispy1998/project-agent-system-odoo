@@ -32,5 +32,5 @@ def get_project_manager_agent(llm, system_prompt=None) -> Agent:
             bulk_move_tasks,
             setup_agile_project
         ],
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1, max_rpm=10,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3, max_rpm=10,
     )

@@ -16,5 +16,5 @@ def get_planning_agent(llm, system_prompt=None) -> Agent:
         goal="Create structured project plans (WBS) in Odoo.",
         backstory=backstory,
         tools=[setup_agile_project, list_projects], # Apenas 2 ferramentas essenciais
-        llm=llm, verbose=False, allow_delegation=False, max_iter=1,
+        llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )
