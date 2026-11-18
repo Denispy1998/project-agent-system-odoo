@@ -5,6 +5,7 @@ class AiTemplate(models.Model):
     _description = 'AI Agent Template'
     _order = 'name'
 
+    company_id = fields.Many2one('res.company', string='Organization', required=True, default=lambda self: self.env.company)
     name = fields.Char(string='Template Name', required=True)
     workspace_id = fields.Many2one('project.project', string='Workspace', ondelete='cascade', 
                                    help="The Workspace (Project) this agent belongs to.")
@@ -19,8 +20,8 @@ class AiTemplate(models.Model):
     
     model_name = fields.Selection([
         ('groq', 'Groq (qwen3.8-27b)'),
-        ('openai', 'OpenAI (GPT-4o)'),
-        ('anthropic', 'Anthropic (Claude 3.5)')
+        ('gemini', 'Google (Gemini 3.6 Flash)'),
+        ('openrouter', 'OpenRouter (Nemotron 3 Ultra)')
     ], string='LLM Provider', default='groq', required=True)
     
     # NOVOS: Parâmetros do LLM

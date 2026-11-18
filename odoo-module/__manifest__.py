@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'AI Project Management Ecosystem',
-    'version': '19.0.2.9.0',
+    'version': '19.0.4.0.0',
     'category': 'Project',
     'summary': 'Multi-agent AI ecosystem for project management (Odoo 19)',
     'description': """
-AI Project Management Ecosystem v2.9.0
-=====================================
+AI Project Management Ecosystem v4.0.0 (MCP & Multi-Tenant)
+=====================================================================
 Multi-agent AI ecosystem for project management with:
 - CrewAI orchestrator (Project Manager, Team Member, Reporting, Diagram agents)
 - Multi-session chat with persistent context
@@ -28,6 +28,10 @@ Author: Denilson Fragoso Da Silva Santos (IST-1113142)
         'views/task_views.xml',
         'views/project_project_views.xml',
         'views/ai_template_views.xml',
+        'views/ai_workspace_views.xml',
+        'views/ai_agent_views.xml',
+        'views/ai_tool_views.xml',
+        'views/ai_menu_views.xml',
         'data/ir_cron_data.xml',
     ],
     'installable': True,

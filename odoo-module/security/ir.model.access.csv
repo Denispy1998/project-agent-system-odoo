@@ -7,3 +7,7 @@ access_project_project_member,project.project.member,project.model_project_proje
 access_ai_template_manager,access_ai_template_manager,model_ai_template,meu_assistente_ia.group_gestor_projeto,1,1,1,1
 access_ai_template_member,access_ai_template_member,model_ai_template,meu_assistente_ia.group_membro_equipa,1,0,0,0
 access_ai_template_system,access_ai_template_system,model_ai_template,base.group_system,1,1,1,1
+access_ai_workspace,access_ai_workspace,model_ai_workspace,,1,1,1,1
+access_ai_tool,access_ai_tool,model_ai_tool,,1,1,1,1
+access_ai_agent,access_ai_agent,model_ai_agent,,1,1,1,1
+access_ai_monitorization,access_ai_monitorization,model_ai_monitorization,,1,1,1,1
