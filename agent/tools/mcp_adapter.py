@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 """Adaptador MCP -> CrewAI (Fase 3.3 - Odoo + Jira)."""
 import asyncio
+import contextvars
 from crewai.tools import tool
 from mcp import ClientSession
 from mcp.client.sse import sse_client
+
+_company_id = contextvars.ContextVar('company_id', default=0)
+_workspace_id = contextvars.ContextVar('workspace_id', default=0)
+
+def set_mcp_context(company_id: int, workspace_id: int):
+    _company_id.set(company_id)
+    _workspace_id.set(workspace_id)
 
 MCP_ODOO_URL = "http://127.0.0.1:8002/sse"
 MCP_JIRA_URL = "http://127.0.0.1:8003/sse"
 
 def _run_async_tool(tool_name: str, arguments: dict, server_url: str = MCP_ODOO_URL) -> str:
+    arguments['company_id'] = _company_id.get()
+    arguments['workspace_id'] = _workspace_id.get()
+
     async def _call():
         async with sse_client(server_url) as (read, write):
             async with ClientSession(read, write) as session:

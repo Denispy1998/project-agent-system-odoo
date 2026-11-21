@@ -29,10 +29,10 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None):
+def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None, company_id=0, workspace_id=0):
     try:
         payload = {"message": message, "user_id": user_id,
-                   "is_manager": is_manager, "model_name": model_name}
+                   "is_manager": is_manager, "model_name": model_name, "company_id": company_id, "workspace_id": workspace_id}
         if system_prompt:
             payload["system_prompt"] = system_prompt
         if guardrails:
@@ -1059,7 +1059,7 @@ class ChatbotController(http.Controller):
 
             _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=request.env.company.id, workspace_id=0)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

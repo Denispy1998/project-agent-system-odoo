@@ -43,6 +43,8 @@ def set_cache_response(key, response):
     CACHE_DB[key] = (time.time(), response)
 
 class ChatRequest(BaseModel):
+    company_id: int = 0
+    workspace_id: int = 0
     message: str = Field(..., max_length=2000)
     user_id: int = 0
     is_manager: bool = False
@@ -86,7 +88,9 @@ def run_agent(req: ChatRequest):
         is_manager=effective_is_manager,
         model_name=req.model_name,
         system_prompt=req.system_prompt,
-        guardrails=req.guardrails
+        guardrails=req.guardrails,
+        company_id=req.company_id,
+        workspace_id=req.workspace_id
     )
 
     if not result.startswith("ERROR"):
