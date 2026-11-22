@@ -1059,7 +1059,7 @@ class ChatbotController(http.Controller):
 
             _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=request.env.company.id, workspace_id=0)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=int(request.httprequest.cookies.get('cids', str(request.env.company.id)).split('-')[0]), workspace_id=0)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

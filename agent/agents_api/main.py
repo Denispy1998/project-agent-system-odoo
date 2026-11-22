@@ -68,9 +68,13 @@ def run_agent(req: ChatRequest):
     # Phase 6: Agent Lifecycle Check
     if req.company_id > 0:
         try:
+            _logger.info(f"[LIFECYCLE] A verificar agente para company_id={req.company_id}")
             active_agents = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id), ('state', '=', 'running')]])
+            
             if not active_agents:
                 return ChatResponse(response="ERROR: System Paused. There is no AI Agent in 'Running' state for this Organization. Please go to AI Governance > Agents and click 'Start'.")
+            else:
+                _logger.info(f"[LIFECYCLE] Agente(s) encontrado(s): {active_agents}")
         except Exception as e:
             _logger.error(f"Failed to check agent state: {e}")
 
@@ -121,14 +125,10 @@ def run_agent(req: ChatRequest):
     try:
         _logger.info(f"[TELEMETRY] A gravar log: company_id={req.company_id}")
         agent_ids = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id)]], {'limit': 1})
-        if not agent_ids:
-            _logger.info("[TELEMETRY] Agente não encontrado na empresa. A usar fallback global...")
-            agent_ids = _odoo_call('ai.agent', 'search', [[]], {'limit': 1})
-            
         if agent_ids:
             _odoo_call('ai.monitorization', 'create', [{
                 'agent_id': agent_ids[0],
-                'company_id': req.company_id or 1,
+                'company_id': req.company_id,
                 'execution_time': round(execution_time, 3),
                 'status': status,
                 'log_message': error_msg if status == 'error' else result[:500]
