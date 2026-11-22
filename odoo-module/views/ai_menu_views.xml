@@ -1,27 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Menu Raiz -->
-    <menuitem id="menu_ai_governance_root" 
-              name="AI Governance" 
-              sequence="15" 
+    <menuitem id="menu_ai_governance_root"
+              name="AI Governance"
+              sequence="15"
               web_icon="project,static/description/icon.png"/>
 
     <!-- Submenus -->
-    <menuitem id="menu_ai_workspace" 
-              name="Workspaces" 
-              parent="menu_ai_governance_root" 
-              action="action_ai_workspace" 
+    <menuitem id="menu_ai_workspace"
+              name="Workspaces"
+              parent="menu_ai_governance_root"
+              action="action_ai_workspace"
               sequence="10"/>
-              
-    <menuitem id="menu_ai_agent" 
-              name="Agents" 
-              parent="menu_ai_governance_root" 
-              action="action_ai_agent" 
+
+    <menuitem id="menu_ai_agent"
+              name="Agents"
+              parent="menu_ai_governance_root"
+              action="action_ai_agent"
               sequence="20"/>
-              
-    <menuitem id="menu_ai_tool" 
-              name="Tools (MCP)" 
-              parent="menu_ai_governance_root" 
-              action="action_ai_tool" 
+
+    <menuitem id="menu_ai_tool"
+              name="Tools (MCP)"
+              parent="menu_ai_governance_root"
+              action="action_ai_tool"
               sequence="30"/>
+
+    <!-- NOVO MENU AQUI -->
+    <menuitem id="menu_ai_monitorization"
+              name="Monitorization"
+              parent="menu_ai_governance_root"
+              action="action_ai_monitorization"
+              sequence="40"/>
 </odoo>

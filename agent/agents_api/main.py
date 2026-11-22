@@ -25,8 +25,8 @@ WRITE_KEYWORDS = [
     "definir", "marcar", "atribuir"
 ]
 
-def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails):
-    return f"{user_id}_{is_manager}_{model_name}_{system_prompt}_{guardrails}_{message}"
+def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails, company_id, workspace_id):
+    return f"{company_id}_{workspace_id}_{user_id}_{is_manager}_{model_name}_{system_prompt}_{guardrails}_{message}"
 
 def get_cached_response(key):
     if key in CACHE_DB:
@@ -74,7 +74,7 @@ def run_agent(req: ChatRequest):
     else:
         effective_is_manager = False
 
-    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails)
+    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails, req.company_id, req.workspace_id)
     cached_result = get_cached_response(cache_key)
 
     if cached_result:
@@ -82,16 +82,50 @@ def run_agent(req: ChatRequest):
         return ChatResponse(response=cached_result)
 
     _logger.info(f'[ORCHESTRATOR] A processar: "{req.message[:50]}..."')
-    result = run_orchestrator(
-        user_message=req.message,
-        user_id=req.user_id,
-        is_manager=effective_is_manager,
-        model_name=req.model_name,
-        system_prompt=req.system_prompt,
-        guardrails=req.guardrails,
-        company_id=req.company_id,
-        workspace_id=req.workspace_id
-    )
+    start_time = time.time()
+    status = 'success'
+    error_msg = ''
+    
+    try:
+        result = run_orchestrator(
+            user_message=req.message,
+            user_id=req.user_id,
+            is_manager=effective_is_manager,
+            model_name=req.model_name,
+            system_prompt=req.system_prompt,
+            guardrails=req.guardrails,
+            company_id=req.company_id,
+            workspace_id=req.workspace_id
+        )
+        if result.startswith("ERROR"):
+            status = 'error'
+            error_msg = result
+    except Exception as e:
+        result = f"ERROR: {str(e)}"
+        status = 'error'
+        error_msg = str(e)
+        _logger.error(f"Orchestrator exception: {e}")
+
+    execution_time = time.time() - start_time
+    
+    # Log to Odoo Monitorization
+    try:
+        _logger.info(f"[TELEMETRY] A gravar log: company_id={req.company_id}")
+        agent_ids = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id)]], {'limit': 1})
+        if not agent_ids:
+            _logger.info("[TELEMETRY] Agente não encontrado na empresa. A usar fallback global...")
+            agent_ids = _odoo_call('ai.agent', 'search', [[]], {'limit': 1})
+            
+        if agent_ids:
+            _odoo_call('ai.monitorization', 'create', [{
+                'agent_id': agent_ids[0],
+                'company_id': req.company_id or 1,
+                'execution_time': round(execution_time, 3),
+                'status': status,
+                'log_message': error_msg if status == 'error' else result[:500]
+            }])
+    except Exception as log_e:
+        _logger.error(f"Failed to save monitorization log: {log_e}")
 
     if not result.startswith("ERROR"):
         # Se for uma operação de escrita, limpa todo o cache (cache invalidation)

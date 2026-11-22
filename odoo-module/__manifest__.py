@@ -31,6 +31,7 @@ Author: Denilson Fragoso Da Silva Santos (IST-1113142)
         'views/ai_workspace_views.xml',
         'views/ai_agent_views.xml',
         'views/ai_tool_views.xml',
+        'views/ai_monitorization_views.xml',
         'views/ai_menu_views.xml',
         'data/ir_cron_data.xml',
     ],
