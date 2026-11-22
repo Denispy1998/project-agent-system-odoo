@@ -65,6 +65,15 @@ def run_agent(req: ChatRequest):
         if not user_exists:
             return ChatResponse(response=f"ERROR: User with ID {req.user_id} not found.")
 
+    # Phase 6: Agent Lifecycle Check
+    if req.company_id > 0:
+        try:
+            active_agents = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id), ('state', '=', 'running')]])
+            if not active_agents:
+                return ChatResponse(response="ERROR: System Paused. There is no AI Agent in 'Running' state for this Organization. Please go to AI Governance > Agents and click 'Start'.")
+        except Exception as e:
+            _logger.error(f"Failed to check agent state: {e}")
+
     client_claims_manager = bool(req.is_manager)
     if client_claims_manager and req.user_id:
         server_truth = verify_user_is_manager(req.user_id)
