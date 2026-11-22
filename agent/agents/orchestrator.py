@@ -58,7 +58,7 @@ def get_llm(model_name: str = "groq"):
 
     return LLM(model="groq/qwen/qwen3.8-27b", max_tokens=512, temperature=0.0, api_key=os.getenv("GROQ_API_KEY"))
 
-def _detect_agent(user_message: str, is_manager: bool = False) -> str:
+def _detect_agent(user_message: str, is_manager: bool = False) -> tuple:
     msg = user_message.lower()
     if any(k in msg for k in ["diagram", "flowchart", "sequence", "er diagram", "mermaid"]):
         return "diagram"
@@ -110,7 +110,7 @@ def _enforce_guardrails(message: str, guardrails: str) -> Optional[str]:
 
     return None
 
-def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None, company_id: int = 0, workspace_id: int = 0) -> str:
+def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None, company_id: int = 0, workspace_id: int = 0) -> tuple:
     from tools.mcp_adapter import set_mcp_context
     set_mcp_context(company_id, workspace_id)
     # 1. Permission Guard (RBAC)
@@ -119,12 +119,12 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
     wants_write = any(k in msg_lower for k in write_keywords)
 
     if wants_write and not is_manager:
-        return ("DENIED: You are signed in as a Team Member. Write operations require the 'Project Manager' role.")
+        return ("DENIED: You are signed in as a Team Member. Write operations require the 'Project Manager' role.", 0)
 
     # 2. Hard Guardrails (Code-level enforcement)
     guardrail_violation = _enforce_guardrails(user_message, guardrails)
     if guardrail_violation:
-        return guardrail_violation
+        return guardrail_violation, 0
 
     # 3. Inject Guardrails into System Prompt (Soft enforcement for LLM)
     if guardrails and guardrails.strip():
@@ -141,20 +141,20 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
     local_result = try_route(user_message)
     if local_result is not None:
         _logger.info("Routed locally (no LLM call)")
-        return local_result
+        return local_result, 0
 
     # 5. Off-topic Guardrail
     off_topic_keywords = ["poem", "poema", "cook", "cozinhar", "recipe", "receita", "weather", "clima", "joke", "piada", "story", "história", "filme", "movie"]
     if any(k in msg_lower for k in off_topic_keywords):
         _logger.info("Off-topic blocked locally (no LLM call)")
-        return ("INFO: I am a Project Management AI Assistant. I can only help with projects, tasks, risks, and reports.")
+        return ("INFO: I am a Project Management AI Assistant. I can only help with projects, tasks, risks, and reports.", 0)
 
     # 6. Diagram Shortcut
     if _detect_diagram_intent(user_message):
         try:
             from tools.mermaid_tools import generate_mermaid_diagram
             _logger.info("Diagram intent detected — direct tool call")
-            return generate_mermaid_diagram.func(description=user_message)
+            return generate_mermaid_diagram.func(description=user_message), 0
         except Exception as e:
             _logger.error(f"Diagram shortcut failed: {e}")
 
@@ -187,7 +187,8 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
             task = Task(description=task_desc, agent=agent, expected_output="A clear, concise response in English.")
             crew = Crew(agents=[agent], tasks=[task], verbose=False)
             result = crew.kickoff()
-            return str(result)
+            tokens = getattr(getattr(result, 'token_usage', None), 'total_tokens', 0)
+            return str(result), tokens
 
         except Exception as e:
             err = str(e).lower()
@@ -196,7 +197,7 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
 
             recovered = _recover_tool_output(crew)
             if recovered:
-                return recovered
+                return recovered, 0
 
             if is_rate_limit and attempt < max_attempts:
                 wait = backoff_schedule[attempt - 1]
@@ -206,10 +207,10 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
 
             if is_rate_limit:
                 total_wait = sum(backoff_schedule[:max_attempts - 1])
-                return f"Rate limit reached on Groq free tier after {max_attempts} attempts (~{total_wait}s total). Please retry in 60 seconds."
+                return f"ERROR: Rate limit reached on Groq free tier after {max_attempts} attempts (~{total_wait}s total). Please retry in 60 seconds.", 0
 
             if is_empty:
-                return "LLM returned an empty response. Please retry in 30 seconds."
+                return "ERROR: LLM returned an empty response. Please retry in 30 seconds.", 0
 
             _logger.error(f"Orchestrator error: {type(e).__name__}")
-            return f"Orchestrator error: {type(e).__name__}. Please retry in 30 seconds."
+            return f"ERROR: Orchestrator error: {type(e).__name__}. Please retry in 30 seconds.", 0

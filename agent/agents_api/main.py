@@ -100,7 +100,7 @@ def run_agent(req: ChatRequest):
     error_msg = ''
     
     try:
-        result = run_orchestrator(
+        result, tokens_used = run_orchestrator(
             user_message=req.message,
             user_id=req.user_id,
             is_manager=effective_is_manager,
@@ -117,6 +117,7 @@ def run_agent(req: ChatRequest):
         result = f"ERROR: {str(e)}"
         status = 'error'
         error_msg = str(e)
+        tokens_used = 0
         _logger.error(f"Orchestrator exception: {e}")
 
     execution_time = time.time() - start_time
@@ -130,6 +131,7 @@ def run_agent(req: ChatRequest):
                 'agent_id': agent_ids[0],
                 'company_id': req.company_id,
                 'execution_time': round(execution_time, 3),
+                'tokens_used': tokens_used,
                 'status': status,
                 'log_message': error_msg if status == 'error' else result[:500]
             }])
