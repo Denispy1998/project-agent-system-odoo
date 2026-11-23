@@ -29,10 +29,10 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None, company_id=0, workspace_id=0, allowed_tools=None):
+def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None, company_id=0, workspace_id=0, allowed_tools=None, agent_id=0):
     try:
         payload = {"message": message, "user_id": user_id,
-                   "is_manager": is_manager, "model_name": model_name, "company_id": company_id, "workspace_id": workspace_id, "allowed_tools": allowed_tools}
+                   "is_manager": is_manager, "model_name": model_name, "company_id": company_id, "workspace_id": workspace_id, "allowed_tools": allowed_tools, "agent_id": agent_id}
         if system_prompt:
             payload["system_prompt"] = system_prompt
         if guardrails:
@@ -1044,6 +1044,7 @@ class ChatbotController(http.Controller):
             user = request.env.user
             is_manager = _is_user_manager(user.id)
             model_name = "groq"
+            session = None
             if session_id:
                 session = request.env['ai.session'].browse(session_id)
                 if session.exists():
@@ -1060,11 +1061,16 @@ class ChatbotController(http.Controller):
             _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
             cid = int(request.httprequest.cookies.get('cids', str(request.env.company.id)).split('-')[0])
-            active_agent = request.env['ai.agent'].sudo().search([('company_id', '=', cid), ('state', '=', 'running')], limit=1)
+            wid = session.workspace_id.id if session and session.exists() and session.workspace_id else 0
+            agent_domain = [('company_id', '=', cid), ('state', '=', 'running')]
+            if wid:
+                agent_domain.append(('workspace_id', '=', wid))
+            active_agent = request.env['ai.agent'].sudo().search(agent_domain, limit=1)
+            agent_id = active_agent.id if active_agent else 0
             agent_tools = active_agent.tool_ids.mapped('name') if active_agent else []
             # Normalizar nomes: se a tool é 'mcp_list_projects', adicionar 'list_projects' para o router local
             agent_tools += [t.replace('mcp_', '') for t in agent_tools if t.startswith('mcp_')]
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=cid, workspace_id=0, allowed_tools=agent_tools)
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=cid, workspace_id=wid, allowed_tools=agent_tools, agent_id=agent_id)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:
@@ -1509,11 +1515,17 @@ class ChatbotController(http.Controller):
         try:
             data = json.loads(request.httprequest.data)
             name = data.get('name', 'New Chat')
+            cid = int(request.httprequest.cookies.get('cids', str(request.env.company.id)).split('-')[0])
+            active_agent = request.env['ai.agent'].sudo().search([('company_id', '=', cid), ('state', '=', 'running')], limit=1)
+            wid = active_agent.workspace_id.id if active_agent and active_agent.workspace_id else False
+            
             session = request.env['ai.session'].create({
                 'name': name,
                 'user_id': request.env.user.id,
                 'model_name': data.get('model_name', 'groq'),
                 'messages': json.dumps([]),
+                'company_id': cid,
+                'workspace_id': wid,
             })
             return Response(
                 json.dumps({'id': session.id, 'name': session.name}),
