@@ -29,10 +29,10 @@ def _chart_colors(n):
     return [CHART_COLORS[i % len(CHART_COLORS)] for i in range(n)]
 
 
-def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None, company_id=0, workspace_id=0):
+def call_agent_api(message, user_id, is_manager, model_name="groq", system_prompt=None, guardrails=None, company_id=0, workspace_id=0, allowed_tools=None):
     try:
         payload = {"message": message, "user_id": user_id,
-                   "is_manager": is_manager, "model_name": model_name, "company_id": company_id, "workspace_id": workspace_id}
+                   "is_manager": is_manager, "model_name": model_name, "company_id": company_id, "workspace_id": workspace_id, "allowed_tools": allowed_tools}
         if system_prompt:
             payload["system_prompt"] = system_prompt
         if guardrails:
@@ -1059,7 +1059,12 @@ class ChatbotController(http.Controller):
 
             _logger.info(f"USER {user.login} role: {'manager' if is_manager else 'member'} model: {model_name} template: {template_id}")
             inicio = time.time()
-            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=int(request.httprequest.cookies.get('cids', str(request.env.company.id)).split('-')[0]), workspace_id=0)
+            cid = int(request.httprequest.cookies.get('cids', str(request.env.company.id)).split('-')[0])
+            active_agent = request.env['ai.agent'].sudo().search([('company_id', '=', cid), ('state', '=', 'running')], limit=1)
+            agent_tools = active_agent.tool_ids.mapped('name') if active_agent else []
+            # Normalizar nomes: se a tool é 'mcp_list_projects', adicionar 'list_projects' para o router local
+            agent_tools += [t.replace('mcp_', '') for t in agent_tools if t.startswith('mcp_')]
+            resposta = call_agent_api(pergunta, user.id, is_manager, model_name, system_prompt, guardrails, company_id=cid, workspace_id=0, allowed_tools=agent_tools)
             _logger.info(f"Response in {time.time()-inicio:.3f}s")
             return Response(json.dumps({'resposta': resposta or 'No response'}), content_type='application/json')
         except Exception as e:

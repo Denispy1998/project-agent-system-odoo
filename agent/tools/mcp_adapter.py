@@ -178,13 +178,14 @@ def mcp_jira_move_issue(issue_key: str, target_status: str) -> str:
     """Move a Jira issue to a new status (e.g., 'In Progress', 'Done')."""
     return _run_async_tool("mcp_jira_move_issue", {"issue_key": issue_key, "target_status": target_status}, server_url=MCP_JIRA_URL)
 
-def get_all_mcp_tools() -> list:
-    return [
-        # Odoo
+def get_all_mcp_tools(allowed_names: list = None) -> list:
+    all_tools = [
         mcp_list_projects, mcp_list_tasks, mcp_list_stages, mcp_analyze_risks, mcp_prioritize_tasks, mcp_project_summary,
         mcp_create_project, mcp_add_task, mcp_create_stage, mcp_move_single_task, mcp_move_tasks,
         mcp_delete_task, mcp_delete_stage, mcp_delete_project, mcp_move_all_tasks, mcp_set_task_status,
         mcp_list_agent_templates, mcp_setup_agile_project, mcp_bulk_move_tasks, mcp_simulate_delay, mcp_scan_project_risks,
-        # Jira
         mcp_jira_list_projects, mcp_jira_create_issue, mcp_jira_update_issue, mcp_jira_delete_issue, mcp_jira_move_issue
     ]
+    if allowed_names is not None:
+        return [t for t in all_tools if getattr(t, "name", "") in allowed_names]
+    return all_tools

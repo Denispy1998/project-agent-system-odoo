@@ -203,21 +203,30 @@ PATTERNS = [
 ]
 
 
-def try_route(message: str) -> Optional[str]:
-    """Try to match the message with a local regex pattern.
-
-    Returns the tool's response if a match is found; None otherwise
-    (caller falls back to the LLM-based orchestrator).
-    """
+def try_route(message: str, allowed_tools: list = None) -> Optional[str]:
+    """Try to match the message with a local regex pattern."""
     if not message:
         return None
     for pattern, handler in PATTERNS:
         m = pattern.match(message)
         if m:
+            # Extrair nome da tool a partir da lambda
+            tool_name = None
+            if hasattr(handler, '__code__'):
+                for name in handler.__code__.co_names:
+                    if name != 'func' and not name.startswith('_'):
+                        tool_name = name
+                        break
+            
+            # Bloquear se a tool não estiver autorizada
+            if allowed_tools is not None:
+                norm_allowed = [t.replace('mcp_', '') for t in allowed_tools]
+                norm_tool = tool_name.replace('mcp_', '') if tool_name else None
+                if norm_tool not in norm_allowed:
+                    continue  # Ignora esta tool e passa para o LLM
+
             try:
                 return handler(m)
             except Exception as e:
-                # If a matching regex triggers a tool error, fall through
-                # to the LLM rather than crashing.
                 return f"ERROR: {type(e).__name__}: {e}"
     return None

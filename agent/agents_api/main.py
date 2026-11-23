@@ -25,7 +25,7 @@ WRITE_KEYWORDS = [
     "definir", "marcar", "atribuir"
 ]
 
-def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails, company_id, workspace_id):
+def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails, company_id, workspace_id, allowed_tools=None):
     return f"{company_id}_{workspace_id}_{user_id}_{is_manager}_{model_name}_{system_prompt}_{guardrails}_{message}"
 
 def get_cached_response(key):
@@ -51,6 +51,7 @@ class ChatRequest(BaseModel):
     model_name: str = 'groq'
     system_prompt: str | None = None
     guardrails: str | None = None
+    allowed_tools: list[str] = []
 
 class ChatResponse(BaseModel):
     response: str
@@ -87,7 +88,7 @@ def run_agent(req: ChatRequest):
     else:
         effective_is_manager = False
 
-    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails, req.company_id, req.workspace_id)
+    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails, req.company_id, req.workspace_id, allowed_tools=str(sorted(req.allowed_tools)))
     cached_result = get_cached_response(cache_key)
 
     if cached_result:
@@ -108,7 +109,8 @@ def run_agent(req: ChatRequest):
             system_prompt=req.system_prompt,
             guardrails=req.guardrails,
             company_id=req.company_id,
-            workspace_id=req.workspace_id
+            workspace_id=req.workspace_id,
+            allowed_tools=req.allowed_tools
         )
         if result.startswith("ERROR"):
             status = 'error'

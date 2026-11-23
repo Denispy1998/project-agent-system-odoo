@@ -110,7 +110,7 @@ def _enforce_guardrails(message: str, guardrails: str) -> Optional[str]:
 
     return None
 
-def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None, company_id: int = 0, workspace_id: int = 0) -> tuple:
+def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None, company_id: int = 0, workspace_id: int = 0, allowed_tools: list = None) -> tuple:
     from tools.mcp_adapter import set_mcp_context
     set_mcp_context(company_id, workspace_id)
     # 1. Permission Guard (RBAC)
@@ -138,7 +138,7 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
     crew = None
 
     # 4. Local Router
-    local_result = try_route(user_message)
+    local_result = try_route(user_message, allowed_tools)
     if local_result is not None:
         _logger.info("Routed locally (no LLM call)")
         return local_result, 0
@@ -178,10 +178,10 @@ def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manage
                 agent = get_reporting_agent(llm, system_prompt)
                 task_desc = f"Generate a status report for: {user_message}"
             elif agent_type == "project_manager":
-                agent = get_project_manager_agent(llm, system_prompt)
+                agent = get_project_manager_agent(llm, system_prompt, allowed_tools)
                 task_desc = user_message
             else:
-                agent = get_team_member_agent(llm, system_prompt)
+                agent = get_team_member_agent(llm, system_prompt, allowed_tools)
                 task_desc = user_message
 
             task = Task(description=task_desc, agent=agent, expected_output="A clear, concise response in English.")
