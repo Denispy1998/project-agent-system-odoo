@@ -27,7 +27,7 @@ def test_agent_running(mock_orchestrator, mock_odoo_call):
         [1] if model == 'ai.agent' else 
         None
     )
-    mock_orchestrator.return_value = "Success"
+    mock_orchestrator.return_value = ("Success", 0)
     payload = {"message": "Hello", "user_id": 1, "company_id": 2}
     response = client.post("/agent/run", json=payload)
     assert response.status_code == 200
