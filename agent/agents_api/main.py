@@ -25,8 +25,10 @@ WRITE_KEYWORDS = [
     "definir", "marcar", "atribuir"
 ]
 
-def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails, company_id, workspace_id, allowed_tools=None):
-    return f"{company_id}_{workspace_id}_{user_id}_{is_manager}_{model_name}_{system_prompt}_{guardrails}_{message}"
+def get_cache_key(message, user_id, is_manager, model_name, system_prompt, guardrails, company_id, workspace_id, allowed_tools=None, agent_id=0):
+    import hashlib
+    raw = f"{message}|{user_id}|{is_manager}|{model_name}|{system_prompt}|{guardrails}|{company_id}|{workspace_id}|{allowed_tools}|{agent_id}"
+    return hashlib.md5(raw.encode()).hexdigest()
 
 def get_cached_response(key):
     if key in CACHE_DB:
@@ -52,6 +54,7 @@ class ChatRequest(BaseModel):
     system_prompt: str | None = None
     guardrails: str | None = None
     allowed_tools: list[str] = []
+    agent_id: int = 0
 
 class ChatResponse(BaseModel):
     response: str
@@ -70,7 +73,12 @@ def run_agent(req: ChatRequest):
     if req.company_id > 0:
         try:
             _logger.info(f"[LIFECYCLE] A verificar agente para company_id={req.company_id}")
-            active_agents = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id), ('state', '=', 'running')]])
+            domain = [('company_id', '=', req.company_id), ('state', '=', 'running')]
+            if req.agent_id > 0:
+                domain.append(('id', '=', req.agent_id))
+            if req.workspace_id > 0:
+                domain.append(('workspace_id', '=', req.workspace_id))
+            active_agents = _odoo_call('ai.agent', 'search', [domain])
             
             if not active_agents:
                 return ChatResponse(response="ERROR: System Paused. There is no AI Agent in 'Running' state for this Organization. Please go to AI Governance > Agents and click 'Start'.")
@@ -88,7 +96,7 @@ def run_agent(req: ChatRequest):
     else:
         effective_is_manager = False
 
-    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails, req.company_id, req.workspace_id, allowed_tools=str(sorted(req.allowed_tools)))
+    cache_key = get_cache_key(req.message, req.user_id, effective_is_manager, req.model_name, req.system_prompt, req.guardrails, req.company_id, req.workspace_id, allowed_tools=str(sorted(req.allowed_tools)), agent_id=req.agent_id)
     cached_result = get_cached_response(cache_key)
 
     if cached_result:
@@ -127,7 +135,11 @@ def run_agent(req: ChatRequest):
     # Log to Odoo Monitorization
     try:
         _logger.info(f"[TELEMETRY] A gravar log: company_id={req.company_id}")
-        agent_ids = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id)]], {'limit': 1})
+        agent_ids = []
+        if req.agent_id > 0:
+            agent_ids = [req.agent_id]
+        else:
+            agent_ids = _odoo_call('ai.agent', 'search', [[('company_id', '=', req.company_id)]], {'limit': 1})
         if agent_ids:
             _odoo_call('ai.monitorization', 'create', [{
                 'agent_id': agent_ids[0],
