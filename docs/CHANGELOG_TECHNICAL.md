@@ -2,31 +2,6 @@
 
 Este documento cataloga os casos técnicos (T1-T15) de problemas encontrados, soluções aplicadas e lições aprendidas ao longo do desenvolvimento do ecossistema (v2.1 até v3.0.0).
 
-
-### T16: Odoo 19 Multi-Tenancy Context (Cookie `cids`)
-*   **Problema:** O `request.env.company.id` devolvia sempre a empresa 1, ignorando o seletor de empresa no browser, quebrando o isolamento.
-*   **Solução:** Leitura direta do cookie `cids` no controlador (`request.httprequest.cookies.get('cids')`).
-*   **Lição:** Em rotas customizadas fora do `/web`, o contexto da empresa ativa deve ser lido via cookie.
-
-### T17: FastAPI Telemetry & CrewAI Tuple Unpacking
-*   **Problema:** O CrewAI devolvia um objeto complexo; a telemetria não registava `tokens_used` e tratava Rate Limits como sucesso.
-*   **Solução:** Alteração da assinatura do `run_orchestrator` para devolver um tuplo `(resposta, tokens_used)` e prefixar erros de Rate Limit com "ERROR: ".
-*   **Lição:** Isolar a extração de métricas do LLM logo na camada de orquestração.
-
-### T18: UI Tool Governance vs Local Router Bypass
-*   **Problema:** O Router Local executava ferramentas instantaneamente, ignorando as permissões definidas na UI (`ai.agent.tool_ids`).
-*   **Solução:** Injeção de `allowed_tools` no payload, filtro no Router Local (via `__code__.co_names` das lambdas) e normalização de nomes (`mcp_list_projects` -> `list_projects`).
-*   **Lição:** Atalhos de otimização (Router) devem herdar estritamente as regras de segurança (RBAC/Tools).
-
-### T19: Workspace Lifecycle Hardcoding
-*   **Problema:** Sessões de chat e agentes eram procurados sem `workspace_id` (hardcoded a 0), permitindo que um agente de outro workspace respondesse.
-*   **Solução:** Criação e validação de sessões estritamente ligadas ao `company_id` (via cids) e `workspace_id` (via agente ativo).
-*   **Lição:** O isolamento multi-tenant requer validação de contexto em todas as camadas (Sessão -> Empresa -> Workspace -> Agente).
-
-### T20: `sync_tools.py` Multi-Tenancy e Idempotência
-*   **Problema:** O script de sincronização MCP tinha credenciais hardcoded (admin/admin) e duplicava registos entre empresas.
-*   **Solução:** Leitura do `.env`, argumento `--company_id`, e lógica de *upsert* (search antes de create) para garantir idempotência.
-
 ## Casos Técnicos
 
 ### T1: Ownership de Tabelas PostgreSQL
@@ -104,3 +79,27 @@ Este documento cataloga os casos técnicos (T1-T15) de problemas encontrados, so
 *   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
 *   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
 *   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
+
+### T16: Odoo 19 Multi-Tenancy Context (Cookie `cids`)
+*   **Problema:** O `request.env.company.id` devolvia sempre a empresa 1, ignorando o seletor de empresa no browser, quebrando o isolamento.
+*   **Solução:** Leitura direta do cookie `cids` no controlador (`request.httprequest.cookies.get('cids')`).
+*   **Lição:** Em rotas customizadas fora do `/web`, o contexto da empresa ativa deve ser lido via cookie.
+
+### T17: FastAPI Telemetry & CrewAI Tuple Unpacking
+*   **Problema:** O CrewAI devolvia um objeto complexo; a telemetria não registava `tokens_used` e tratava Rate Limits como sucesso.
+*   **Solução:** Alteração da assinatura do `run_orchestrator` para devolver um tuplo `(resposta, tokens_used)` e prefixar erros de Rate Limit com "ERROR: ".
+*   **Lição:** Isolar a extração de métricas do LLM logo na camada de orquestração.
+
+### T18: UI Tool Governance vs Local Router Bypass
+*   **Problema:** O Router Local executava ferramentas instantaneamente, ignorando as permissões definidas na UI (`ai.agent.tool_ids`).
+*   **Solução:** Injeção de `allowed_tools` no payload, filtro no Router Local (via `__code__.co_names` das lambdas) e normalização de nomes (`mcp_list_projects` -> `list_projects`).
+*   **Lição:** Atalhos de otimização (Router) devem herdar estritamente as regras de segurança (RBAC/Tools).
+
+### T19: Workspace Lifecycle Hardcoding
+*   **Problema:** Sessões de chat e agentes eram procurados sem `workspace_id` (hardcoded a 0), permitindo que um agente de outro workspace respondesse.
+*   **Solução:** Criação e validação de sessões estritamente ligadas ao `company_id` (via cids) e `workspace_id` (via agente ativo).
+*   **Lição:** O isolamento multi-tenant requer validação de contexto em todas as camadas (Sessão -> Empresa -> Workspace -> Agente).
+
+### T20: `sync_tools.py` Multi-Tenancy e Idempotência
+*   **Problema:** O script de sincronização MCP tinha credenciais hardcoded (admin/admin) e duplicava registos entre empresas.
+*   **Solução:** Leitura do `.env`, argumento `--company_id`, e lógica de *upsert* (search antes de create) para garantir idempotência.
