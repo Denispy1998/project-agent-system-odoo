@@ -7,6 +7,7 @@ import xmlrpc.client
 import os
 import logging
 import threading
+import contextvars
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from crewai.tools import tool
@@ -21,6 +22,10 @@ ODOO_USER = os.getenv("ODOO_USER", "admin")
 ODOO_PASSWORD = os.getenv("ODOO_PASSWORD", "admin")
 
 _thread_local = threading.local()
+_odoo_company_id = contextvars.ContextVar('odoo_company_id', default=0)
+
+def set_odoo_company(company_id: int):
+    _odoo_company_id.set(company_id)
 
 
 def _get_connection():
@@ -38,7 +43,14 @@ def _get_connection():
 
 def _call(model: str, method: str, args: list, kwargs: dict = None):
     _, uid, models = _get_connection()
-    return models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, model, method, args, kwargs or {})
+    kwargs = kwargs or {}
+    company = _odoo_company_id.get()
+    if company > 0:
+        ctx = kwargs.get('context', {})
+        ctx['allowed_company_ids'] = [company]
+        ctx['force_company'] = company
+        kwargs['context'] = ctx
+    return models.execute_kw(ODOO_DB, uid, ODOO_PASSWORD, model, method, args, kwargs)
 
 
 def _clean(name: str) -> str:

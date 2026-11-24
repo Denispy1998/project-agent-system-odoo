@@ -112,7 +112,9 @@ def _enforce_guardrails(message: str, guardrails: str) -> Optional[str]:
 
 def run_orchestrator(user_message: str, user_id: Optional[int] = None, is_manager: bool = False, model_name: str = "groq", system_prompt: Optional[str] = None, guardrails: Optional[str] = None, company_id: int = 0, workspace_id: int = 0, allowed_tools: list = None) -> tuple:
     from tools.mcp_adapter import set_mcp_context
+    from tools.odoo_tools import set_odoo_company
     set_mcp_context(company_id, workspace_id)
+    set_odoo_company(company_id)
     # 1. Permission Guard (RBAC)
     write_keywords = ["create", "add", "delete", "remove", "move", "update", "edit", "set ", "set\t", "mark ", "assign ", "setup", "simulate", "bulk", "criar", "adicionar", "apagar", "eliminar", "mover", "atualizar", "definir", "marcar", "atribuir"]
     msg_lower = user_message.lower()

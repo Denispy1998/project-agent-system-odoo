@@ -2,7 +2,7 @@
 from crewai import Agent
 from tools.odoo_tools import setup_agile_project, list_projects
 
-def get_planning_agent(llm, system_prompt=None) -> Agent:
+def get_planning_agent(llm, system_prompt=None, allowed_tools=None) -> Agent:
     # Prompt curto para poupar tokens
     default = (
         "You are a Planner. "
@@ -11,10 +11,14 @@ def get_planning_agent(llm, system_prompt=None) -> Agent:
     )
     backstory = (system_prompt + "\n\n" if system_prompt else "") + default
 
+    all_tools = [setup_agile_project, list_projects]
+    if allowed_tools is not None:
+        all_tools = [t for t in all_tools if getattr(t, "name", "") in allowed_tools]
+
     return Agent(
         role="Project Planner",
         goal="Create structured project plans (WBS) in Odoo.",
         backstory=backstory,
-        tools=[setup_agile_project, list_projects], # Apenas 2 ferramentas essenciais
+        tools=all_tools, # Apenas 2 ferramentas essenciais
         llm=llm, verbose=False, allow_delegation=False, max_iter=3,
     )
