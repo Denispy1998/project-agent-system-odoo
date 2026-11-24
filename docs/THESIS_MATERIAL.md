@@ -36,10 +36,12 @@ Key design choices:
 
 - Hybrid Router — local regex classifier absorbs ~90% of commands in
   under 0.5 s, with zero LLM calls. Only unknown intents go to the LLM.
-- XML-RPC tools — 17 idempotent tools wrapping Odoo CRUD operations.
+- MCP Server — 26 tools exposed via Model Context Protocol (21 Odoo + 5 Jira), with dynamic `sync_tools.py` synchronization.
 - CrewAI agents — role-based LLM agents (Project Manager, Team Member,
   Reporting, Diagram) with short backstories to control token usage.
-- RBAC at two layers — Odoo ir.model.access + orchestrator-level guard.
+- RBAC and Tool Governance — UI-level tool assignment (`ai.agent.tool_ids`) enforced at the Router and MCP Adapter levels.
+- Multi-Tenancy — strict isolation by Organization (`company_id`), Workspace, and Agent.
+- Telemetry — monitorization of execution time, token usage (`tokens_used`), and error statuses.
 - Task lifecycle — project.task.task_status (In Backlog / In Progress /
   Concluded) with automatic date_end handling.
 - Dynamic diagrams — the LLM generates Mermaid code, with a weighted
@@ -54,6 +56,14 @@ The artefact draws from:
 - AI/LLM: CrewAI 0.175.0, LiteLLM 1.74.9, prompt engineering for
   constrained outputs (Mermaid, XML-RPC payloads)
 - Enterprise systems: Odoo 19 ORM, PostgreSQL 18 access control
+
+
+## 1.4 New Architecture Additions (v4.0.0-alpha)
+
+During the implementation of v4.0.0-alpha, two major architectural shifts occurred:
+
+1. **Model Context Protocol (MCP):** To solve the NxM integration problem, the Odoo and Jira tools were extracted into dedicated MCP Servers. The orchestrator acts as an MCP Client, allowing seamless addition of new enterprise systems without altering the core agent logic.
+2. **Multi-Tenancy and Governance:** A strict data isolation model was implemented using Organizations (`res.company`), Workspaces, and Agent Instances. The UI provides full control over which tools an agent can use, enforced by the Router and the MCP Adapter. Telemetry and lifecycle management (Start/Stop) were also introduced.
 
 ---
 

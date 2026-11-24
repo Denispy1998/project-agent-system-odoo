@@ -1,11 +1,11 @@
-# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos (v3.2.0)
+# 🌐 Ecossistema Multiagente de IA para Gestão de Projetos (v4.0.0-alpha)
 
 [![Odoo 19](https://img.shields.io/badge/Odoo-19-875A7B.svg)](https://www.odoo.com/)
 [![CrewAI](https://img.shields.io/badge/CrewAI-0.175.0-FF6B6B.svg)](https://github.com/joaomdmoura/crewAI)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.6-009688.svg)](https://fastapi.tiangolo.com/)
 [![Jira](https://img.shields.io/badge/Jira-REST_API-0052CC.svg)](https://developer.atlassian.com/cloud/jira/platform/rest/v3/)
-[![Tests](https://img.shields.io/badge/Tests-44%20Passed-success.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-48%20Passed-success.svg)]()
 [![Certification](https://img.shields.io/badge/Certification-30%2F30-brightgreen.svg)]()
 
 Este repositório contém o código-fonte do ecossistema multiagente de Inteligência Artificial desenvolvido para a dissertação do Mestrado em Engenharia Informática e de Computadores (MEIC) do Instituto Superior Técnico (IST).
@@ -17,7 +17,7 @@ O objetivo principal é integrar agentes autónomos baseados em LLMs diretamente
 ## ✨ Funcionalidades Principais
 
 * **6 Agentes Especializados:** Project Manager, Team Member, Reporting, Diagram, Planning e Risk.
-* **22 Ferramentas Idempotentes:** 20 ferramentas Odoo (CRUD, riscos, diagramas, macros) + 2 ferramentas Jira (listar projetos, criar issues).
+* **26 Ferramentas MCP:** 21 ferramentas Odoo (CRUD, riscos, diagramas, macros) + 5 ferramentas Jira, todas expostas via **Model Context Protocol (MCP) Server**.
 * **Multi-LLM Integrado (Gratuito):** Suporte nativo para **Groq** (Qwen 3.8), **Google Gemini** (3.6 Flash) e **OpenRouter** (Nemotron 3 Ultra), com fallback automático em caso de falha ou rate limit.
 * **Router Híbrido (Regex + LLM):** ~90% dos comandos comuns são resolvidos localmente (latência de 0.05s) sem gastar tokens de LLM. O fallback para o CrewAI só acontece para pedidos complexos.
 * **BackOffice de Governança:** Menu nativo no Odoo para gestão dinâmica de *System Prompts* (Templates).
@@ -25,12 +25,18 @@ O objetivo principal é integrar agentes autónomos baseados em LLMs diretamente
 * **Cache Inteligente:** Sistema de cache em memória (TTL de 5 min) com *invalidação automática* em operações de escrita.
 * **Blindagem Thread-Safe:** Conexão XML-RPC isolada por thread (`threading.local()`).
 
+* **Multi-Tenancy e Workspaces:** Isolamento total de dados por Organização (res.company), Workspace (ai.workspace) e Agentes (ai.agent).
+* **Governança e Lifecycle:** Interface no Odoo para gerir Agentes, Tools (MCP) e Monitorização (Telemetria de tokens e execução). Botões Start/Stop para controlo de execução.
+* **Tool Governance:** As permissões atribuídas aos agentes na UI (aba Tools) são estritamente aplicadas no backend.
+* **MCP Adapter:** Ponte dinâmica entre CrewAI e os servidores MCP (Odoo e Jira), permitindo a expansão para qualquer sistema externo.
+
 ## 🏗️ Arquitetura
 
-O sistema assenta numa arquitetura de 3 camadas:
-1. **Interface:** Módulo Odoo 19 (HTML/CSS/JS) acessível via browser.
+O sistema assenta numa arquitetura de 4 camadas:
+1. **Interface:** Módulo Odoo 19 (HTML/CSS/JS) e BackOffice de Governança (Workspaces, Agentes, Monitorização).
 2. **Orquestração:** Microserviço FastAPI (Python 3.12) + CrewAI (0.175.0) + Multi-LLM (Groq, Gemini, OpenRouter).
-3. **Base de Dados:** PostgreSQL 18.
+3. **MCP Layer:** Servidores MCP (Odoo na porta 8002, Jira na porta 8003) que expõem ferramentas via SSE.
+4. **Base de Dados:** PostgreSQL 18 (isolamento por company_id).
 
 ## 🚀 Quick Start
 
