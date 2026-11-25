@@ -79,8 +79,6 @@ Este documento cataloga os casos técnicos (T1-T15) de problemas encontrados, so
 *   **Problema:** Sob stress (10 pedidos), o FastAPI falhava com `ResponseNotReady`. O Cache servia respostas antigas após alterações de estado, e mensagens gigantes causavam latência excessiva.
 *   **Solução:** `threading.local()` no XML-RPC, `Field(max_length=2000)` no Pydantic e `CACHE_DB.clear()` em operações de escrita. Certificação final: 30/30 PASS.
 
----
-
 ### T16: Odoo 19 Multi-Tenancy Context (Cookie `cids`)
 *   **Problema:** O `request.env.company.id` devolvia sempre a empresa 1, ignorando o seletor de empresa no browser, quebrando o isolamento.
 *   **Solução:** Leitura direta do cookie `cids` no controlador (`request.httprequest.cookies.get('cids')`).
