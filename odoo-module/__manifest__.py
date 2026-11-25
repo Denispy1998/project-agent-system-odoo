@@ -23,6 +23,7 @@ Author: Denilson Fragoso Da Silva Santos (IST-1113142)
     'depends': ['base', 'project', 'mail', 'website'],
     'data': [
         'security/groups.xml',
+        'security/ir_rule.xml',
         'security/ir.model.access.csv',
         'views/menu.xml',
         'views/task_views.xml',

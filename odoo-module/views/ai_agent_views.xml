@@ -37,7 +37,7 @@
                     </group>
                     <notebook>
                         <page string="Tools">
-                            <field name="tool_ids">
+                            <field name="tool_ids" domain="[('company_id', '=', company_id)]">
                                 <list>
                                     <field name="name"/>
                                     <field name="tool_type"/>
