@@ -2,6 +2,18 @@
 
 Este documento cataloga os casos técnicos (T1-T15) de problemas encontrados, soluções aplicadas e lições aprendidas ao longo do desenvolvimento do ecossistema (v2.1 até v3.0.0).
 
+## Notas de Versão (Histórico)
+
+*   **v3.0.0 (05/Nov/2026):** Suprema Auditoria (30/30 PASS). Hard Guardrails, Workspace Agents, Concurrency Fixes & Cache Invalidation.
+*   **v2.9.7:** Implementação de Hard Guardrails e Workspace Agents.
+*   **v2.9.6 (03/Nov/2026):** README Profissional e Changelog fix.
+*   **v2.9.5 (03/Nov/2026):** Auditoria final de engenharia. Logging estruturado. Otimização Odoo 19 (`_read_group`).
+*   **v2.9.4 (02/Nov/2026):** Otimização de agentes para o Groq Free Tier. Implementação de Cache no FastAPI. Limpeza de 20 projetos de teste na DB. Ruff 0 warnings.
+*   **v2.9.3 (30/Out/2026):** Correção do CI (`test_patterns_count_stable`).
+*   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
+*   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
+*   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
+
 ## Casos Técnicos
 
 ### T1: Ownership de Tabelas PostgreSQL
@@ -68,17 +80,6 @@ Este documento cataloga os casos técnicos (T1-T15) de problemas encontrados, so
 *   **Solução:** `threading.local()` no XML-RPC, `Field(max_length=2000)` no Pydantic e `CACHE_DB.clear()` em operações de escrita. Certificação final: 30/30 PASS.
 
 ---
-## Notas de Versão (Histórico)
-
-*   **v3.0.0 (05/Nov/2026):** Suprema Auditoria (30/30 PASS). Hard Guardrails, Workspace Agents, Concurrency Fixes & Cache Invalidation.
-*   **v2.9.7:** Implementação de Hard Guardrails e Workspace Agents.
-*   **v2.9.6 (03/Nov/2026):** README Profissional e Changelog fix.
-*   **v2.9.5 (03/Nov/2026):** Auditoria final de engenharia. Logging estruturado. Otimização Odoo 19 (`_read_group`).
-*   **v2.9.4 (02/Nov/2026):** Otimização de agentes para o Groq Free Tier. Implementação de Cache no FastAPI. Limpeza de 20 projetos de teste na DB. Ruff 0 warnings.
-*   **v2.9.3 (30/Out/2026):** Correção do CI (`test_patterns_count_stable`).
-*   **v2.9.2 (29/Out/2026):** Fuzzing audit. Fix de SUCCESS/ERROR. RBAC write_keywords.
-*   **v2.9.0/2.9.1:** Refactor e limpeza cirúrgica.
-*   **v2.8.0:** Agentes de Planeamento e Riscos. BackOffice.
 
 ### T16: Odoo 19 Multi-Tenancy Context (Cookie `cids`)
 *   **Problema:** O `request.env.company.id` devolvia sempre a empresa 1, ignorando o seletor de empresa no browser, quebrando o isolamento.

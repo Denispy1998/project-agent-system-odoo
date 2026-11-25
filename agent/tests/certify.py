@@ -219,7 +219,7 @@ def read_api_version():
     return "?"
 
 api_ver = read_api_version()
-check("  FastAPI API_VERSION", api_ver == "3.2.0", api_ver)
+check("  FastAPI API_VERSION", api_ver == "4.0.0-alpha", api_ver)
 
 
 # ─────────────────────────────────────────────────────────────
